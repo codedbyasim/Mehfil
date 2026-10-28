@@ -1,0 +1,70 @@
+{
+  "id": "bride",
+  "title": "Bride week",
+  "placeholder": true,
+  "subject": "Placeholder illustration, not a real person",
+  "role": "bride",
+  "presentation": "woman",
+  "framing": "chest-up",
+  "vtoOrder": "cloth-first",
+  "selfie": "/demo/bride/selfie.svg",
+  "faceCrop": "/demo/bride/face.svg",
+  "simulationImage": "/demo/bride/simulation.svg",
+  "eyeFocus": { "x": 50, "y": 46, "scale": 1.6 },
+  "simulation": null,
+  "skin": {
+    "output": [
+      { "type": "redness", "ui_score": 70, "raw_score": 61 },
+      { "type": "oiliness", "ui_score": 68, "raw_score": 58 },
+      { "type": "texture", "ui_score": 76, "raw_score": 72 },
+      { "type": "dark_circle_v2", "ui_score": 74, "raw_score": 70 },
+      { "type": "pore", "ui_score": 82, "raw_score": 80 },
+      { "type": "acne", "ui_score": 91, "raw_score": 90 },
+      { "type": "skin_type", "region": "whole", "skin_type": "Combination" },
+      { "type": "skin_type", "region": "t_zone", "skin_type": "Oily" },
+      { "type": "skin_type", "region": "u_zone", "skin_type": "Normal" },
+      { "type": "all", "score": 74 },
+      { "type": "skin_age", "score": 27 }
+    ]
+  },
+  "tones": {
+    "skin_color": "#C48A62",
+    "eye_color": "#3A2A22",
+    "eye_color_name": "Brown",
+    "lip_color": "#A85A55",
+    "eyebrow_color": "#4A342C",
+    "hair_color": "#2A160F",
+    "hair_color_name": "Black"
+  },
+  "events": [
+    {
+      "id": "mehndi",
+      "name": "Mehndi",
+      "date": "2026-11-14",
+      "timeOfDay": "evening",
+      "venue": "Courtyard",
+      "outfitId": "bride-mehndi-lehenga",
+      "tryOnImage": "/demo/bride/mehndi.svg"
+    },
+    {
+      "id": "baraat",
+      "name": "Baraat",
+      "date": "2026-11-15",
+      "timeOfDay": "night",
+      "venue": "Hall",
+      "outfitId": "bride-baraat-lehenga",
+      "tryOnImage": "/demo/bride/baraat.svg"
+    },
+    {
+      "id": "walima",
+      "name": "Walima",
+      "date": "2026-11-16",
+      "timeOfDay": "evening",
+      "venue": "Dinner",
+      "outfitId": "bride-walima-lehenga",
+      "tryOnImage": "/demo/bride/walima.svg"
+    }
+  ],
+  "preferManifestPlan": false,
+  "plan": null
+}

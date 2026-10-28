@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ivory: #f4efe6;
+  --color-ivory-deep: #e7dccb;
+  --color-paper: #fffaf3;
+  --color-maroon: #6e1d2c;
+  --color-maroon-deep: #3c1018;
+  --color-gold: #a68445;
+  --color-gold-bright: #e4c88a;
+  --color-ink: #241812;
+  --color-muted: #6f5d53;
+  --font-display: var(--font-mehfil-display), "Iowan Old Style", Palatino, serif;
+  --font-sans: var(--font-mehfil-sans), "Avenir Next", "Segoe UI", sans-serif;
+  --font-urdu: var(--font-mehfil-urdu), serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--color-ink);
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(228, 200, 138, 0.35), transparent 55%),
+    radial-gradient(900px 420px at 110% 8%, rgba(110, 29, 44, 0.08), transparent 50%),
+    var(--color-ivory);
+  font-family: var(--font-sans);
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><path d='M70 18c8 14 8 22 0 34-8-12-8-20 0-34zm0 104c-8-14-8-22 0-34 8 12 8 20 0 34zM18 70c14-8 22-8 34 0-12 8-20 8-34 0zm104 0c-14 8-22 8-34 0 12-8 20-8 34 0z' fill='none' stroke='%23a68445' stroke-width='1'/></svg>");
+  mix-blend-mode: multiply;
+}
+
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  font-weight: 560;
+  letter-spacing: -0.02em;
+}
+
+.urdu {
+  font-family: var(--font-urdu);
+  line-height: 1.8;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
+.rise {
+  animation: rise 0.7s ease both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .rise { animation: none; }
+}
+
+@media print {
+  body { background: white; }
+  body::before, .no-print { display: none !important; }
+  .print-sheet { box-shadow: none !important; }
+}

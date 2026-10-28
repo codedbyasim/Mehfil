@@ -1,0 +1,89 @@
+{
+  "id": "groom",
+  "title": "Groom week",
+  "placeholder": false,
+  "subject": "Muhammad Asim (consented)",
+  "role": "groom",
+  "presentation": "man",
+  "framing": "chest-up",
+  "vtoOrder": "makeup-first",
+  "selfie": "/demo/groom/input/asim_original.jpg",
+  "faceCrop": "/demo/groom/input/asim_face_crop_skin.jpg",
+  "simulationImage": "/demo/groom/simulation/event_day_goal.png",
+  "groomingImage": "/demo/groom/makeup/orderB_step1_makeup_only.png",
+  "eyeFocus": { "x": 50, "y": 42, "scale": 1.85 },
+  "simulation": {
+    "dark_circle": 0.5,
+    "oiliness": 0.4,
+    "pores": 0.3,
+    "texture": 0.3
+  },
+  "skin": {
+    "output": [
+      { "type": "pore", "ui_score": 86, "raw_score": 91.07 },
+      { "type": "redness", "ui_score": 99, "raw_score": 100 },
+      { "type": "texture", "ui_score": 98, "raw_score": 99.2 },
+      { "type": "oiliness", "ui_score": 89, "raw_score": 92.95 },
+      { "type": "dark_circle_v2", "ui_score": 63, "raw_score": 45.55 },
+      { "type": "acne", "ui_score": 99, "raw_score": 100 },
+      { "type": "skin_type", "region": "whole", "skin_type": "Normal" },
+      { "type": "skin_type", "region": "t_zone", "skin_type": "Normal" },
+      { "type": "skin_type", "region": "u_zone", "skin_type": "Normal" },
+      { "type": "all", "score": 89 },
+      { "type": "skin_age", "score": 29 }
+    ]
+  },
+  "tones": {
+    "eye_color": "#282227",
+    "eye_color_name": "Brown",
+    "lip_color": "#936769",
+    "eyebrow_color": "#3E3834",
+    "skin_color": "#805E46",
+    "hair_color": "#B56637",
+    "hair_color_name": "Auburn"
+  },
+  "masks": {
+    "dark_circle_v2": "/demo/groom/skin/mask_dark_circle_v2.jpg",
+    "pore": "/demo/groom/skin/mask_pore.jpg",
+    "texture": "/demo/groom/skin/mask_texture.jpg",
+    "oiliness": "/demo/groom/skin/mask_oiliness.jpg",
+    "acne": "/demo/groom/skin/mask_acne.jpg",
+    "redness": "/demo/groom/skin/mask_redness.jpg"
+  },
+  "events": [
+    {
+      "id": "mehndi",
+      "name": "Mehndi",
+      "date": "2026-11-14",
+      "timeOfDay": "evening",
+      "venue": "Family courtyard",
+      "outfitId": "groom-mehndi-kurta",
+      "tryOnImage": "/demo/groom/tryon/cloth_mehndi_kurta_mustard.jpg",
+      "beforeImage": "/demo/groom/input/asim_original.jpg"
+    },
+    {
+      "id": "baraat",
+      "name": "Baraat",
+      "date": "2026-11-15",
+      "timeOfDay": "night",
+      "venue": "Wedding hall",
+      "outfitId": "groom-baraat-sherwani",
+      "tryOnImage": "/demo/groom/makeup/orderB_makeup_then_cloth_baraat.jpg",
+      "beforeImage": "/demo/groom/input/asim_original.jpg",
+      "alternateTryOn": "/demo/groom/makeup/orderA_cloth_then_makeup_baraat.png",
+      "alternateLabel": "Outfit first, then makeup"
+    },
+    {
+      "id": "walima",
+      "name": "Walima",
+      "date": "2026-11-16",
+      "timeOfDay": "evening",
+      "venue": "Dinner",
+      "outfitId": "groom-walima-princecoat",
+      "tryOnImage": "/demo/groom/tryon/cloth_walima_princecoat_navy.jpg",
+      "beforeImage": "/demo/groom/input/asim_original.jpg"
+    }
+  ],
+  "preferManifestPlan": false,
+  "plan": null
+}
