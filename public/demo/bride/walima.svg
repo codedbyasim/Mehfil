@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1040">
+  <rect width="800" height="1040" fill="#f3e6d4"/>
+  <circle cx="120" cy="120" r="70" fill="none" stroke="#a68445" stroke-width="2" opacity="0.5"/>
+  <circle cx="680" cy="160" r="40" fill="none" stroke="#a68445" stroke-width="2" opacity="0.45"/>
+  <path d="M160 780 C200 640 250 600 400 600 C550 600 600 640 640 780 L700 980 L100 980 Z" fill="#B7C4B0"/>
+  <path d="M400 600 L400 980" stroke="#e4c88a" stroke-width="4" opacity="0.7"/>
+  <rect x="300" y="430" width="200" height="220" rx="80" fill="#C48A62"/>
+  <path d="M250 470 C250 250 300 160 400 160 C500 160 550 250 550 470 C520 390 480 360 400 360 C320 360 280 390 250 470 Z" fill="#2A160F"/>
+  <ellipse cx="400" cy="430" rx="150" ry="180" fill="#C48A62"/>
+  <ellipse cx="345" cy="430" rx="16" ry="10" fill="#2a211c"/>
+  <ellipse cx="455" cy="430" rx="16" ry="10" fill="#2a211c"/>
+  <path d="M370 520 Q400 540 430 520" fill="none" stroke="#6a4038" stroke-width="3"/>
+  <path d="M350 560 Q400 590 450 560 Q400 610 350 560 Z" fill="#C4A090"/>
+  <text x="400" y="150" text-anchor="middle" font-family="Georgia, serif" font-size="28" fill="#6e1c2b">Walima</text>
+  <rect x="0" y="960" width="800" height="80" fill="#3d0d16"/>
+  <text x="400" y="1008" text-anchor="middle" font-family="Georgia, serif" font-size="26" fill="#e4c88a" letter-spacing="3">PLACEHOLDER · NOT A PHOTO</text>
+</svg>

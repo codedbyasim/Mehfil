@@ -1,0 +1,169 @@
+{
+ "generated": "2026-10-28 21:23-21:27 PKT",
+ "subject": "Muhammad Asim (consented), groom path",
+ "source_photo": "input/asim_original.jpg (from photos/asim.png, 1080x1350)",
+ "units": {
+  "before": 1954,
+  "after": 1908,
+  "used": 46,
+  "breakdown": {
+   "skin-analysis SD 7 concerns": 12,
+   "skin-tone-analysis": 20,
+   "cloth-v4 x4": 8,
+   "makeup-vto x2": 2,
+   "skin-simulation 4 concerns": 4,
+   "failed skin-tone on full photo": 0
+  }
+ },
+ "analysis": {
+  "skin_analysis": {
+   "endpoint": "POST /s2s/v2.0/task/skin-analysis",
+   "input": "input/asim_face_crop_skin.jpg (680x850 face crop)",
+   "dst_actions": [
+    "oiliness",
+    "redness",
+    "dark_circle_v2",
+    "texture",
+    "pore",
+    "acne",
+    "skin_type"
+   ],
+   "scores": {
+    "pore": {
+     "ui_score": 86,
+     "raw_score": 91.07
+    },
+    "redness": {
+     "ui_score": 99,
+     "raw_score": 100.0
+    },
+    "texture": {
+     "ui_score": 98,
+     "raw_score": 99.2
+    },
+    "oiliness": {
+     "ui_score": 89,
+     "raw_score": 92.95
+    },
+    "dark_circle_v2": {
+     "ui_score": 63,
+     "raw_score": 45.55
+    },
+    "acne": {
+     "ui_score": 99,
+     "raw_score": 100.0
+    },
+    "skin_type": {
+     "whole": "Normal",
+     "t_zone": "Normal",
+     "u_zone": "Normal"
+    },
+    "all": 89.0,
+    "skin_age": 29
+   },
+   "masks_overlay": "skin/mask_*.jpg (enable_mask_overlay=true; mask_resize_image.jpg is the resized input)",
+   "raw": "raw/skin_analysis_response.json"
+  },
+  "face_tone": {
+   "endpoint": "POST /s2s/v2.0/task/skin-tone-analysis",
+   "input": "input/asim_face_crop_skin.jpg",
+   "result": {
+    "color": {
+     "eye_color": "#282227",
+     "eye_color_name": "Brown",
+     "lip_color": "#936769",
+     "eyebrow_color": "#3e3834",
+     "skin_color": "#805e46",
+     "hair_color": "#B56637",
+     "hair_color_name": "Auburn"
+    },
+    "face_quality": {
+     "has_face": true,
+     "area": "good",
+     "frontal": "good",
+     "lighting": "good",
+     "faceangle": "good"
+    }
+   },
+   "note": "hair_color_name 'Auburn' is wrong (hair is black/dark brown); don't surface hair colour name in UI",
+   "raw": "raw/face_tone_response.json"
+  }
+ },
+ "garments": [
+  {
+   "event": "Mehndi",
+   "file": "garments/mehndi_kurta_mustard.jpg",
+   "source": "AI-generated (Grok Bot GenerateImage), no logos/faces, free to use"
+  },
+  {
+   "event": "Baraat",
+   "file": "garments/baraat_sherwani_ivory_gold.jpg",
+   "source": "AI-generated"
+  },
+  {
+   "event": "Walima",
+   "file": "garments/walima_princecoat_navy.jpg",
+   "source": "AI-generated"
+  }
+ ],
+ "outputs": [
+  {
+   "file": "tryon/cloth_mehndi_kurta_mustard.jpg",
+   "api": "cloth-v4",
+   "params": {
+    "garment_category": "upper_body"
+   },
+   "verdict": "Excellent. Face identical, collar/placket/buttons/embroidery strip right; fabric texture became a bolder quilted check vs reference."
+  },
+  {
+   "file": "tryon/cloth_baraat_sherwani_ivory_gold.jpg",
+   "api": "cloth-v4",
+   "params": {
+    "garment_category": "upper_body"
+   },
+   "verdict": "Best result. Gold zari embroidery, mandarin collar and gold buttons faithfully reproduced. Length not judgeable (chest-up photo)."
+  },
+  {
+   "file": "tryon/cloth_walima_princecoat_navy.jpg",
+   "api": "cloth-v4",
+   "params": {
+    "garment_category": "upper_body"
+   },
+   "verdict": "Good. Navy texture and pocket right, but collar rendered open/notched instead of closed mandarin and buttons doubled at top - reads more like a bandhgala blazer."
+  },
+  {
+   "file": "makeup/orderB_step1_makeup_only.png",
+   "api": "makeup-vto",
+   "effects": "raw/groom_makeup_effects.json",
+   "verdict": "Subtle and natural: under-eye slightly brighter, skin evened; slight smoothing. Not unnatural for a man at these intensities."
+  },
+  {
+   "file": "makeup/orderA_cloth_then_makeup_baraat.png",
+   "api": "cloth-v4 -> makeup-vto",
+   "verdict": "Recommended order. Keeps stubble/mole/skin texture; under-eye correction visible but subtle."
+  },
+  {
+   "file": "makeup/orderB_makeup_then_cloth_baraat.jpg",
+   "api": "makeup-vto -> cloth-v4",
+   "verdict": "Works too; face a bit smoother/lighter (cloth-v4 re-encodes the face region again). Cheaper when the SAME grooming applies to many outfits (1 + 2n units vs 3n)."
+  },
+  {
+   "file": "simulation/event_day_goal.png",
+   "api": "skin-simulation",
+   "params": {
+    "dark_circle": 0.5,
+    "oiliness": 0.4,
+    "pores": 0.3,
+    "texture": 0.3
+   },
+   "input": "input/asim_face_crop_skin.jpg",
+   "verdict": "Very subtle, realistic: under-eyes lighter, slight shine reduction. Good for an honest before/after slider; needs zoom to notice."
+  }
+ ],
+ "comparison_images": [
+  "contact_sheet.jpg",
+  "raw/face_detail_compare.jpg",
+  "raw/face_zoom_AB.jpg"
+ ],
+ "raw_responses": "raw/*.json (contain signed S3 URLs that expire 2h after creation; do NOT commit raw/ to the public repo)"
+}

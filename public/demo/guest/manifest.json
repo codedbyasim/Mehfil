@@ -1,0 +1,70 @@
+{
+  "id": "guest",
+  "title": "Guest week",
+  "placeholder": true,
+  "subject": "Placeholder illustration, not a real person",
+  "role": "guest",
+  "presentation": "woman",
+  "framing": "chest-up",
+  "vtoOrder": "cloth-first",
+  "selfie": "/demo/guest/selfie.svg",
+  "faceCrop": "/demo/guest/face.svg",
+  "simulationImage": "/demo/guest/simulation.svg",
+  "eyeFocus": { "x": 50, "y": 46, "scale": 1.6 },
+  "simulation": null,
+  "skin": {
+    "output": [
+      { "type": "texture", "ui_score": 74, "raw_score": 68 },
+      { "type": "oiliness", "ui_score": 84, "raw_score": 80 },
+      { "type": "redness", "ui_score": 86, "raw_score": 84 },
+      { "type": "dark_circle_v2", "ui_score": 79, "raw_score": 76 },
+      { "type": "pore", "ui_score": 80, "raw_score": 77 },
+      { "type": "acne", "ui_score": 94, "raw_score": 93 },
+      { "type": "skin_type", "region": "whole", "skin_type": "Normal" },
+      { "type": "skin_type", "region": "t_zone", "skin_type": "Normal" },
+      { "type": "skin_type", "region": "u_zone", "skin_type": "Normal" },
+      { "type": "all", "score": 82 },
+      { "type": "skin_age", "score": 31 }
+    ]
+  },
+  "tones": {
+    "skin_color": "#A86B4E",
+    "eye_color": "#2C241C",
+    "eye_color_name": "Brown",
+    "lip_color": "#9A5C58",
+    "eyebrow_color": "#3A2C24",
+    "hair_color": "#1A120E",
+    "hair_color_name": "Black"
+  },
+  "events": [
+    {
+      "id": "mehndi",
+      "name": "Mehndi",
+      "date": "2026-11-14",
+      "timeOfDay": "day",
+      "venue": "Lunch",
+      "outfitId": "guest-mehndi-anarkali",
+      "tryOnImage": "/demo/guest/mehndi.svg"
+    },
+    {
+      "id": "baraat",
+      "name": "Baraat",
+      "date": "2026-11-15",
+      "timeOfDay": "night",
+      "venue": "Hall",
+      "outfitId": "guest-baraat-jacket",
+      "tryOnImage": "/demo/guest/baraat.svg"
+    },
+    {
+      "id": "walima",
+      "name": "Walima",
+      "date": "2026-11-16",
+      "timeOfDay": "evening",
+      "venue": "Dinner",
+      "outfitId": "guest-walima-anarkali",
+      "tryOnImage": "/demo/guest/walima.svg"
+    }
+  ],
+  "preferManifestPlan": false,
+  "plan": null
+}

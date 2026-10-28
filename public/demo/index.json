@@ -1,0 +1,22 @@
+{
+  "scenarios": [
+    {
+      "id": "groom",
+      "title": "Groom week",
+      "placeholder": false,
+      "blurb": "A consented live YouCam run. Overall 89, dark circles 63, skin #805E46."
+    },
+    {
+      "id": "bride",
+      "title": "Bride week",
+      "placeholder": true,
+      "blurb": "Placeholder art and fixture scores. Not a live scan."
+    },
+    {
+      "id": "guest",
+      "title": "Guest week",
+      "placeholder": true,
+      "blurb": "Placeholder art for a guest, lighter than bridal."
+    }
+  ]
+}
