@@ -44,7 +44,7 @@
 **Picture:** Quickly: capture screen with the quality checks and the two crops, full photo and face crop. Then the role switch, Bride, and a placeholder card with the word PLACEHOLDER readable. Back to the groom Baraat frame.
 
 **Voiceover:**
-“Try with your own photo runs the same chain live, after the browser checks the picture, and only twice a day per person, under a unit ceiling. The demo you just watched spent zero. The bride week is a real YouCam run on an AI-generated fictional model, not a real person. The guest portrait is still a drawing, marked placeholder. The groom path uses a consented photograph.”
+“Try with your own photo runs the same chain live, after the browser checks the picture. Live mode is open, with no per-user limit. The demo you just watched spent zero. The bride week is a real YouCam run on an AI-generated fictional model, not a real person. The guest portrait is still a drawing, marked placeholder. The groom path uses a consented photograph.”
 
 ## 2:18–2:30 — Close
 

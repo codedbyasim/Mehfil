@@ -133,7 +133,7 @@ export default function HomePage() {
       <section className="rounded-3xl bg-maroon-deep px-6 py-8 text-ivory md:px-10">
         <h2 className="display text-4xl">A preview, not a fitting.</h2>
         <p className="mt-3 max-w-2xl text-ivory/80">
-          Two live try-ons a day for each visitor, under a shared daily ceiling. When that ceiling is full, MEHFIL says so and opens the demo. The demo itself spends nothing.
+          Live try-on is open through 20 November. The demo weeks spend nothing.
         </p>
         <Link href="/boutiques" className="mt-5 inline-block rounded-full bg-gold-bright px-5 py-2 text-maroon-deep">For boutiques</Link>
       </section>

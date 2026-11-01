@@ -1,8 +1,7 @@
 import { capMessage } from "@/lib/cap-message";
 import { hashIp, clientIp, json } from "@/lib/http";
-import type { VisitGrant } from "@/lib/run-grant";
 import { authorizeRun } from "@/server/ledger-store";
-import { knownRunIds, runCookie, visitCookie, withCookies } from "@/server/run-auth";
+import { runCookie, withCookies } from "@/server/run-auth";
 import type { RunGrant } from "@/lib/run-grant";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +19,6 @@ export async function POST(request: Request) {
     runId,
     ip: visitor,
     estimate,
-    knownRunIds: knownRunIds(request),
   });
   if (!decision.allow) {
     return json({
@@ -40,14 +38,5 @@ export async function POST(request: Request) {
     charged: 0,
     pending: {},
   };
-  const visit: VisitGrant = {
-    typ: "visit",
-    visitor,
-    day: decision.ledger.day,
-    runIds: decision.ledger.runsByIp[visitor] ?? [runId],
-  };
-  return withCookies(json({ allow: true, runId, reserved: estimate, limits: decision.limits }), [
-    runCookie(request, grant),
-    visitCookie(request, visit),
-  ]);
+  return withCookies(json({ allow: true, runId, reserved: estimate }), [runCookie(request, grant)]);
 }

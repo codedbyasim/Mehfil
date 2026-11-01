@@ -15,7 +15,7 @@ export type Ledger = {
   reserved: number;
   reservations: Record<string, Reservation>;
   runsByIp: Record<string, string[]>;
-  /** Runs that finished without a delivered look. Capped separately from LIVE_RUNS_PER_IP. */
+  /** Older ledgers stored this. It is not used to block a visit. */
   failedByIp?: Record<string, string[]>;
 };
 
@@ -61,24 +61,6 @@ export function beginRun(
 ): GuardDecision {
   const now = request.now ?? Date.now();
   const rolled = expireReservations(rollDay(ledger, utcDay(new Date(now))), now, limits.reservationTtlMs);
-  const remembered = (request.knownRunIds ?? []).filter((id) => id.length > 0);
-  const failed = rolled.failedByIp?.[request.ip] ?? [];
-  const failedCap = request.failedCap ?? limits.failedPerIp ?? 3;
-  if (!failed.includes(request.runId) && failed.length >= failedCap) {
-    return { allow: false, reason: "failed", ledger: rolled, runId: request.runId };
-  }
-  const runs = [...new Set([...(rolled.runsByIp[request.ip] ?? []), ...remembered])];
-  const already = runs.includes(request.runId) || Boolean(rolled.reservations[request.runId]);
-  if (!already && runs.length >= limits.perIp) {
-    return { allow: false, reason: "ip", ledger: rolled, runId: request.runId };
-  }
-  if (request.estimate > limits.session) {
-    return { allow: false, reason: "session", ledger: rolled, runId: request.runId };
-  }
-  if (rolled.spent + rolled.reserved + request.estimate > limits.daily) {
-    return { allow: false, reason: "daily", ledger: rolled, runId: request.runId };
-  }
-  const nextRuns = already ? runs : [...runs, request.runId];
   const previous = rolled.reservations[request.runId];
   const reserved = rolled.reserved - (previous?.units ?? 0) + request.estimate;
   return {
@@ -88,7 +70,7 @@ export function beginRun(
     ledger: {
       ...rolled,
       reserved,
-      runsByIp: { ...rolled.runsByIp, [request.ip]: nextRuns },
+      runsByIp: rolled.runsByIp,
       reservations: {
         ...rolled.reservations,
         [request.runId]: {
@@ -104,20 +86,9 @@ export function beginRun(
   };
 }
 
-function withoutDeliveredRun(ledger: Ledger, visitor: string, runId: string): Ledger {
-  const runs = (ledger.runsByIp[visitor] ?? []).filter((id) => id !== runId);
-  const failed = new Set(ledger.failedByIp?.[visitor] ?? []);
-  failed.add(runId);
-  return {
-    ...ledger,
-    runsByIp: { ...ledger.runsByIp, [visitor]: runs },
-    failedByIp: { ...(ledger.failedByIp ?? {}), [visitor]: [...failed] },
-  };
-}
-
 /**
- * Settle a reservation. A run counts toward the visitor cap only when it delivered a look.
- * A failed finish still adds the charged units to the daily spent, then frees the slot.
+ * Settle a reservation. Charged units stay on the ledger. The unused hold is released.
+ * Delivered or not, this does not block the next visit.
  */
 export function finishRun(
   ledger: Ledger,
@@ -126,23 +97,19 @@ export function finishRun(
   now = Date.now(),
   options?: { delivered?: boolean; visitor?: string },
 ): Ledger {
+  void options;
   const current = expireReservations(ledger, now, 30 * 60 * 1000);
   const reservation = current.reservations[runId];
-  const visitor = reservation?.ip ?? options?.visitor;
   const spent = current.spent + Math.max(0, used);
-  if (!reservation) {
-    const next = { ...current, spent };
-    return options?.delivered === false && visitor ? withoutDeliveredRun(next, visitor, runId) : next;
-  }
+  if (!reservation) return { ...current, spent };
   const rest = { ...current.reservations };
   delete rest[runId];
-  const settled: Ledger = {
+  return {
     ...current,
     spent,
     reserved: Math.max(0, current.reserved - reservation.units),
     reservations: rest,
   };
-  return options?.delivered === false && visitor ? withoutDeliveredRun(settled, visitor, runId) : settled;
 }
 
 export function releaseRun(ledger: Ledger, runId: string, now = Date.now()): Ledger {
@@ -158,13 +125,10 @@ function mergePending(left: Record<string, number> = {}, right: Record<string, n
   return pending;
 }
 
-function pendingSum(pending: Record<string, number>): number {
-  return Object.values(pending).reduce((sum, units) => sum + units, 0);
-}
-
 /**
- * Check or record a task against a signed run.
- * Without a task id this only checks the remaining reservation and does not write.
+ * Record a task against a signed run.
+ * A valid token is never refused for how many units the run has used.
+ * Without a task id this only reads the reservation and does not write.
  */
 export function stageTask(
   ledger: Ledger,
@@ -180,7 +144,7 @@ export function stageTask(
   },
 ):
   | { ok: true; ledger: Ledger; charged: number; pending: Record<string, number>; write: boolean }
-  | { ok: false; reason: "run_required" | "reservation_spent" } {
+  | { ok: false; reason: "run_required" } {
   const now = input.now ?? Date.now();
   const current = expireReservations(ledger, now, 30 * 60 * 1000);
   const existing = current.reservations[input.runId];
@@ -189,10 +153,6 @@ export function stageTask(
   const pending = mergePending(existing?.pending, input.grantPending);
   const reserved = existing?.units ?? input.reserved;
   const already = input.taskId ? pending[input.taskId] : undefined;
-  const adding = input.taskId ? (already ? 0 : input.units) : input.units;
-  if (charged + pendingSum(pending) + adding > reserved + 1e-9) {
-    return { ok: false, reason: "reservation_spent" };
-  }
   if (!input.taskId) {
     return { ok: true, ledger: current, charged, pending, write: false };
   }

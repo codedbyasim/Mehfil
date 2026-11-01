@@ -45,7 +45,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <p className="hidden shrink-0 text-right text-xs text-muted sm:block">
-            <span className="block font-medium text-ink">{units} units used</span>
+            <span className="block font-medium text-ink">{units} units used this run</span>
             <span>{session?.mode === "live" ? "Live" : "Demo"}{liveEstimate ? ` · live week ${liveEstimate}` : ""}</span>
           </p>
         </div>

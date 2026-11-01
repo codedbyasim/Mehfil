@@ -127,7 +127,7 @@ export default function StudioPage() {
             : "Charged only when a YouCam task succeeds."}
         </p>
         <p className="mt-6 text-sm text-ivory/75">
-          Daily ceiling and two live runs per visitor sit on the server. Past that, MEHFIL returns to the demo.
+          Live try-on is open. A demo week spends nothing.
         </p>
         {plan ? (
           <p className="mt-6 text-sm">

@@ -45,23 +45,20 @@ export function estimateLiveUnits(options: {
 }
 
 export type Limits = {
+  /** Ignored. Live mode is open; DAILY_UNIT_CAP must not block a run. */
   daily: number;
+  /** Ignored. There is no per-visitor run cap. */
   perIp: number;
-  /** Failed live runs per visitor per UTC day. They do not consume LIVE_RUNS_PER_IP. */
-  failedPerIp?: number;
   session: number;
   reservationTtlMs: number;
 };
 
 export function limitsFromEnv(env: Record<string, string | undefined> = process.env): Limits {
-  const daily = Number(env.DAILY_UNIT_CAP);
-  const perIp = Number(env.LIVE_RUNS_PER_IP);
-  const session = Number(env.SESSION_UNIT_BUDGET);
+  void env;
   return {
-    daily: Number.isFinite(daily) && daily > 0 ? daily : 150,
-    perIp: Number.isFinite(perIp) && perIp > 0 ? perIp : 2,
-    session: Number.isFinite(session) && session > 0 ? session : 60,
-    failedPerIp: 3,
+    daily: Number.POSITIVE_INFINITY,
+    perIp: Number.POSITIVE_INFINITY,
+    session: Number.POSITIVE_INFINITY,
     reservationTtlMs: 30 * 60 * 1000,
   };
 }

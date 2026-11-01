@@ -60,10 +60,8 @@ describe("live run token", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("stops a task that would exceed the signed reservation and hides the credit balance", async () => {
-    const fetchSpy = vi.fn(() => {
-      throw new Error("network");
-    });
+  it("accepts a signed run even when the task costs more than the estimate, and hides the credit balance", async () => {
+    const fetchSpy = vi.fn(async () => Response.json({ data: { task_id: "task-1" } }));
     vi.stubGlobal("fetch", fetchSpy);
     const token = grant({ reserved: 4, charged: 0, pending: {} });
     const task = await taskPost(
@@ -73,12 +71,15 @@ describe("live run token", () => {
         body: JSON.stringify({ feature: "skin-analysis", input: { fileId: "face" } }),
       }),
     );
-    expect(task.status).toBe(409);
+    expect(task.status).toBe(200);
+    const started = await task.json();
+    expect(started.taskId).toBe("task-1");
+    expect(started.error).toBeUndefined();
     const credit = await creditGet(new Request("http://localhost/api/youcam/credit", { headers: { "x-mehfil-run": token } }));
     expect(credit.status).toBe(200);
     const body = await credit.json();
     expect(body).toEqual({ available: true });
     expect(body.balance).toBeUndefined();
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalled();
   });
 });

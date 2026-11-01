@@ -88,9 +88,6 @@ export async function gateTask(request: Request, units: number): Promise<{ grant
   if (!grant) return { ...RUN_REQUIRED, status: 401 };
   const allowed = await budgetAllows(grant, units);
   if (allowed === "ok") return { grant };
-  if (allowed === "reservation_spent") {
-    return { error: allowed, hint: "This live run has used the units it reserved.", status: 409 };
-  }
   return { ...RUN_REQUIRED, status: 401 };
 }
 

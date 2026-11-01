@@ -37,7 +37,7 @@ Clothes VTO v4 is called with `upper_body` for this chest-up portrait. The categ
 
 The stylist is deterministic first. Scores, hex values, and the hues and ITA° computed from those hex values are the only numbers it may write down. A test fails the build if a sentence cites anything else, or if it uses diagnostic language. An optional AIML call (`gpt-4o-mini`) may rewrite live copy and is thrown away when it invents a figure. Demo mode never calls it.
 
-Demo is the default and costs zero units. Live mode is capped at two runs per IP per day and a daily ceiling (150 by default), then the page falls back to the demo. Analysis is cached by image hash. Tests do not call YouCam.
+Demo is the default and costs zero units. Live mode is open through 20 November 2026, with no per-user limit. Analysis is cached by image hash. Tests do not call YouCam.
 
 ## Challenges
 
@@ -57,7 +57,7 @@ Units are scarce. The whole live groom session, including the failed crop and bo
 - A planner that chooses the chain for a reason, checks color, and replans only once.
 - A groom demo that is not a mock: overall 89, dark circles 63, skin `#805E46`, three outfits, both orders, and the eye-level simulation.
 - Bride and guest paths that are honestly marked, not fake photographs of strangers.
-- A unit guard, a citation test, and a claim test, so the copy cannot drift into medicine or invented scores.
+- A citation test and a claim test, so the copy cannot drift into medicine or invented scores.
 - A look book you can print or download, and a shade list with nothing to license.
 
 ## What we learned
@@ -70,7 +70,7 @@ We also learned the cheaper chain and the more faithful chain are not the same c
 
 - A consented bride run, with a full-length frame for a lehenga (`full_body`) and a chest-up frame for the blouse.
 - A boutique embed: one product image in, the shopper’s portrait, the week out, labeled as a preview and not a fit guarantee.
-- Replace the in-memory unit ledger with Upstash when more than one server is warm.
+- Keep live try-on open for judges through 20 November 2026.
 - Record the two-and-a-half minute demo. The script is in `docs/DEMO_SCRIPT.md`.
 
 ## Judging map

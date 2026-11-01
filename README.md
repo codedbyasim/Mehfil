@@ -73,22 +73,10 @@ Failed tasks are not charged by YouCam. MEHFIL releases the unused part of a res
 | Guard | Default |
 | --- | --- |
 | Demo mode | On. Zero units. |
-| Live runs per IP per UTC day | 2 (`LIVE_RUNS_PER_IP`) |
-| Daily unit ceiling | 150 (`DAILY_UNIT_CAP`) |
-| Reserved per run | 60 (`SESSION_UNIT_BUDGET`) |
+| Live mode | Open through 20 November 2026. No per-visitor limit. |
 | Analysis cache | SHA-256 of the image, in memory on the server and in the browser |
 
-Past the cap, the API tells the page to fall back to the demo and says which cap was hit.
-
-Live YouCam calls require a run token from `/api/run/begin`. The token is an HttpOnly cookie, HMAC-signed with the server key, and bound to the visitor hash, an expiry, and the reserved units. `/api/youcam/task`, `/api/youcam/file`, and the task status route reject a request that does not carry it. Each accepted task is held against that reservation, and the hold becomes a charge only when the task succeeds. A failed task releases the hold. `/api/youcam/credit` does not return the unit balance.
-
-The per-visitor cap is also written to a signed visit cookie, so a browser that lands on another serverless instance still counts as the same visitor. The daily ceiling is shared when a store is configured:
-
-1. Upstash, if `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set.
-2. Otherwise a private Vercel Blob object, if `BLOB_READ_WRITE_TOKEN` is set.
-3. Otherwise the memory of that instance. The visit cookie still enforces the per-visitor cap for browsers that keep cookies.
-
-No Marketplace integration is required. On the Vercel project, open Storage, create a Blob store, and leave the injected `BLOB_READ_WRITE_TOKEN` in Production and Preview. That is the only new variable, and it is optional. Until it (or Upstash) is set, the daily ceiling is per instance.
+Live YouCam calls require a run token from `/api/run/begin`. The token is an HttpOnly cookie, HMAC-signed with the server key, and bound to the visitor hash and an expiry. `/api/youcam/task`, `/api/youcam/file`, and the task status route reject a request that does not carry it. The token records what the run reserved so a failed task can release its hold, and a hold becomes a charge only when the task succeeds. It does not stop the run when retries use more than that estimate. `/api/youcam/credit` does not return the unit balance. A visitor is not turned away for how many times they have tried, or for how many units the day has used. `DAILY_UNIT_CAP` and `LIVE_RUNS_PER_IP`, if they are still set, are ignored.
 
 Do not call YouCam from tests. Tests use the manifests and mocks.
 
@@ -163,19 +151,16 @@ Demo mode needs no environment variables. Copy `.env.example` to `.env.local` an
 | `AIML_API_KEY` | No | Optional copy pass. Model defaults to `gpt-4o-mini`. |
 | `AIML_MODEL` | No | Override the model. |
 | `AIML_BASE_URL` | No | Default `https://api.aimlapi.com/v1`. |
-| `DAILY_UNIT_CAP` | No | Default 150. |
-| `LIVE_RUNS_PER_IP` | No | Default 2. |
-| `SESSION_UNIT_BUDGET` | No | Default 60. |
-| `UPSTASH_REDIS_REST_URL` | No | Shared unit ledger. Used before Blob when both are set. |
-| `UPSTASH_REDIS_REST_TOKEN` | No | Shared unit ledger. |
-| `BLOB_READ_WRITE_TOKEN` | No | Optional. Injected when a Vercel Blob store is created on the project. Holds the daily ceiling across instances. Not a Marketplace integration. |
+| `UPSTASH_REDIS_REST_URL` | No | Optional store for one run's reservation. Not a visitor limit. |
+| `UPSTASH_REDIS_REST_TOKEN` | No | Optional store for one run's reservation. |
+| `BLOB_READ_WRITE_TOKEN` | No | Optional. Same role as Upstash when Upstash is unset. Not a visitor limit. |
 | `IP_HASH_SALT` | No | Salt for visitor hashes. Also mixed into the run-token HMAC with the YouCam key. |
 
-On Vercel, set the framework to Next.js, Node 20 or newer, install `npm install`, build `npm run build`. Put the variables above in Production and Preview. Do not mark the keys as exposed to the browser. Function duration stays at the default 10 seconds. A Blob store is optional and is only for the shared daily cap. There is no database.
+On Vercel, set the framework to Next.js, Node 20 or newer, install `npm install`, build `npm run build`. Put the variables above in Production and Preview. Do not mark the keys as exposed to the browser. Function duration stays at the default 10 seconds. There is no database. Live mode does not need a shared store.
 
 ### Demo and live
 
-The site opens in demo mode. “Watch the bride week” and “Watch the groom week” spend nothing. “Try with your own photo” is live: the browser checks the file, crops the face, and the server refuses the run when the key is missing, the visitor has used two runs, or the daily ceiling would break. The page then loads the matching demo and says which cap was hit.
+The site opens in demo mode. “Watch the bride week” and “Watch the groom week” spend nothing. “Try with your own photo” is live, and it stays open through 20 November 2026 with no per-user limit. The server refuses that path only when the YouCam key is missing, and then it shows the demo.
 
 ## Privacy
 
