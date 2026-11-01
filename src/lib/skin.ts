@@ -46,13 +46,47 @@ function emptySkin(): NormalizedSkin {
   return { overall: null, skinAge: null, concerns: [], skinType: {} };
 }
 
+function concernType(type: string): string {
+  if (type === "dark_circle" || type === "hd_dark_circle") return "dark_circle_v2";
+  if (type === "skinage" || type === "hd_skin_age") return "skin_age";
+  return type;
+}
+
+function pushConcern(skin: NormalizedSkin, type: string, raw: number | null, ui: number | null) {
+  const name = concernType(type);
+  if (!name || name === "all" || name === "skin_age") return;
+  if (raw === null && ui === null) return;
+  if (skin.concerns.some((item) => item.type === name)) return;
+  skin.concerns.push({ type: name, raw, ui });
+}
+
+/** score_info.json and any sibling fields next to an output array. */
+function readScoreMap(node: Record<string, unknown>, skin: NormalizedSkin) {
+  if (skin.overall === null) {
+    const all = node.all;
+    skin.overall = typeof all === "number" ? all : num(asRecord(all)?.score);
+  }
+  if (skin.skinAge === null) {
+    const age = node.skin_age ?? node.skinAge;
+    skin.skinAge = typeof age === "number" ? age : num(asRecord(age)?.score);
+  }
+  for (const [key, value] of Object.entries(node)) {
+    if (key === "all" || key === "output" || key === "results" || key === "data" || key === "scores") continue;
+    if (key === "skin_age" || key === "skinAge") continue;
+    const record = asRecord(value);
+    if (!record) continue;
+    const region = asRecord(record.whole) ?? record;
+    pushConcern(skin, key, num(region.raw_score ?? region.raw), num(region.ui_score ?? region.ui));
+  }
+}
+
 export function normalizeSkin(input: unknown): NormalizedSkin {
   if (Array.isArray(input)) return normalizeSkin({ output: input });
   const skin = emptySkin();
   const output = findOutput(input);
   if (output) {
     for (const item of output) {
-      const type = String(item.type ?? "");
+      const type = concernType(String(item.type ?? ""));
       if (type === "all") {
         skin.overall = num(item.score ?? item.ui_score ?? item.raw_score);
       } else if (type === "skin_age") {
@@ -61,9 +95,7 @@ export function normalizeSkin(input: unknown): NormalizedSkin {
         const region = String(item.region ?? item.zone ?? item.sub_type ?? item.area ?? "whole");
         assignRegion(skin.skinType, region, skinTypeLabel(item));
       } else if (type) {
-        const raw = num(item.raw_score);
-        const ui = num(item.ui_score);
-        if (raw !== null || ui !== null) skin.concerns.push({ type, raw, ui });
+        pushConcern(skin, type, num(item.raw_score ?? item.raw), num(item.ui_score ?? item.ui));
       }
     }
   }
@@ -100,6 +132,9 @@ export function normalizeSkin(input: unknown): NormalizedSkin {
   }
   if (skin.overall === null) skin.overall = num(root.overall);
   if (skin.skinAge === null) skin.skinAge = num(root.skinAge);
+  readScoreMap(root, skin);
+  const resultsNode = asRecord(root.results);
+  if (resultsNode) readScoreMap(resultsNode, skin);
   const typeNode = asRecord(friendly.skin_type) ?? asRecord(root.skinType);
   if (typeNode) {
     const whole = typeNode.whole;
@@ -160,7 +195,18 @@ export function toneFactsForDisplay(tones: NormalizedTones) {
 }
 
 export function concern(skin: NormalizedSkin, type: string): Concern | undefined {
-  return skin.concerns.find((item) => item.type === type);
+  const name = concernType(type);
+  return skin.concerns.find((item) => item.type === name || item.type === type);
+}
+
+/** Numbers the skin page shows. Dark circles are that concern only, not the first score in the copy. */
+export function displayScores(skin: NormalizedSkin): { overall: number | null; skinAge: number | null; darkCircles: number | null } {
+  const dark = concern(skin, "dark_circle_v2");
+  return {
+    overall: skin.overall,
+    skinAge: skin.skinAge,
+    darkCircles: dark?.ui ?? dark?.raw ?? null,
+  };
 }
 
 export function skinTypeLabelText(map: SkinTypeMap): string {

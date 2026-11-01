@@ -21,6 +21,9 @@ describe("planner", () => {
     expect(plan.vtoOrder).toBe("makeup-first");
     expect(plan.looks).toHaveLength(3);
     expect(plan.profile.skinHex).toBe("#805E46");
+    expect(plan.profile.overall).toBe(89);
+    expect(plan.profile.skinAge).toBe(29);
+    expect(plan.profile.darkCircles).toBe(63);
     expect(plan.profile.skinTypeLabel).toContain("Normal");
     expect(plan.simulation.source).toBe("recorded");
     expect(plan.simulation.intensities.dark_circle).toBe(0.5);

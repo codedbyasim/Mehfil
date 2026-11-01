@@ -6,10 +6,12 @@ import { idbGet, idbSet } from "@/lib/storage";
 import type { Presentation, Role, Session, SessionEvent, TimeOfDay } from "@/lib/types";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+type SessionUpdate = Session | null | ((current: Session | null) => Session | null);
+
 type SessionApi = {
   ready: boolean;
   session: Session | null;
-  setSession: (session: Session | null) => void;
+  setSession: (session: SessionUpdate) => void;
   loadDemo: (id: string) => Promise<Session>;
   startLive: (role?: Role) => Session;
 };
@@ -75,8 +77,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [session, ready]);
 
-  const setSession = useCallback((next: Session | null) => {
-    setSessionState(next);
+  const setSession = useCallback((next: SessionUpdate) => {
+    setSessionState((current) => (typeof next === "function" ? next(current) : next));
   }, []);
 
   const loadDemo = useCallback(async (id: string) => {

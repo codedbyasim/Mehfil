@@ -4,6 +4,7 @@ import { YouCamError, bytesToDataUrl, downloadResult, pollTask, resultUrlOf, tas
 import { boundGrant, runCookie, runRequired, settleTask, withCookies } from "@/server/run-auth";
 
 export const dynamic = "force-dynamic";
+/** One status check. The browser keeps polling; cloth try-on may take up to three minutes. */
 export const maxDuration = 10;
 
 type Params = { params: Promise<{ feature: string; taskId: string }> };

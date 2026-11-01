@@ -107,15 +107,14 @@ function Swatch({ label, hex }: { label: string; hex: string }) {
   );
 }
 
-function score(session: { plan?: { looks: Array<{ why: string }> } | null }, kind: string): string {
-  const why = session.plan?.looks.map((look) => look.why).join(" ") ?? "";
-  if (kind === "overall") return match(why, /Overall score (\d+)/) ?? "—";
-  if (kind === "age") return match(why, /skin age score (\d+)/) ?? "—";
-  return match(why, /display (\d+)/) ?? "—";
-}
-
-function match(text: string, pattern: RegExp): string | null {
-  return pattern.exec(text)?.[1] ?? null;
+function score(
+  session: { plan?: { profile: { overall: number | null; skinAge: number | null; darkCircles: number | null } } | null },
+  kind: string,
+): string {
+  const profile = session.plan?.profile;
+  const value = kind === "overall" ? profile?.overall : kind === "age" ? profile?.skinAge : profile?.darkCircles;
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  return String(Math.round(value));
 }
 
 function daysUntil(date: string): number {
