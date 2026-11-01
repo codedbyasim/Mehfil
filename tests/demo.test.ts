@@ -5,7 +5,7 @@ import { sessionFromManifest, type DemoManifest } from "@/lib/demo";
 import { cropAroundFace, faceWidthRatio, isFaceBoundError, isFaceSizeError } from "@/lib/crop";
 import { ERROR_HINTS, taskSpec } from "@/lib/payloads";
 import { sniffImage } from "@/lib/sniff";
-import { normalizeSkin, toneFactsForDisplay } from "@/lib/skin";
+import { displayScores, normalizeSkin, toneFactsForDisplay } from "@/lib/skin";
 import { pollJson } from "@/lib/poll";
 import { POST as planPost } from "@/app/api/plan/route";
 
@@ -160,6 +160,60 @@ describe("youcam payload shapes", () => {
     expect(sniffImage(png)).toEqual({ mime: "image/png", ext: "png" });
     const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
     expect(sniffImage(jpg).mime).toBe("image/jpeg");
+  });
+
+  it("reads a live skin payload, including the score_info map", () => {
+    const jsonFormat = {
+      output: [
+        { type: "pore", ui_score: 86, raw_score: 91.07 },
+        { type: "dark_circle", ui_score: 63, raw_score: 45.55 },
+        { type: "oiliness", ui_score: 89, raw_score: 92.95 },
+        { type: "all", score: 89 },
+        { type: "skin_age", score: 29 },
+      ],
+    };
+    const fromJson = normalizeSkin(jsonFormat);
+    expect(fromJson.overall).toBe(89);
+    expect(fromJson.skinAge).toBe(29);
+    expect(fromJson.concerns.find((item) => item.type === "dark_circle_v2")).toMatchObject({ ui: 63, raw: 45.55 });
+    expect(displayScores(fromJson).darkCircles).toBe(63);
+
+    const scoreInfo = {
+      pore: { raw_score: 91.07, ui_score: 86, output_mask_name: "pore_output.png" },
+      dark_circle_v2: { raw_score: 45.55, ui_score: 63, output_mask_name: "dark_circle_v2_output.png" },
+      oiliness: { raw_score: 92.95, ui_score: 89, output_mask_name: "oiliness_output.png" },
+      all: { score: 89 },
+      skin_age: 29,
+    };
+    expect(displayScores(normalizeSkin(scoreInfo))).toEqual({ overall: 89, skinAge: 29, darkCircles: 63 });
+  });
+
+  it("backs off while a slow cloth task is still running", async () => {
+    const waits: number[] = [];
+    let calls = 0;
+    let clock = 0;
+    const result = await pollJson("/api/youcam/task/cloth-v4/slow?inline=1", {
+      intervalMs: 4000,
+      capMs: 180000,
+      backoff: 1.35,
+      maxIntervalMs: 12000,
+      now: () => clock,
+      sleep: async (ms) => {
+        waits.push(ms);
+        clock += ms;
+      },
+      fetchImpl: async () => ({
+        json: async () => {
+          calls += 1;
+          return calls < 4 ? { taskStatus: "running" } : { taskStatus: "success", dataUrl: "data:image/jpeg;base64,xx" };
+        },
+      }),
+    });
+    expect(result.taskStatus).toBe("success");
+    expect(waits[0]).toBe(4000);
+    expect(waits[1]).toBeGreaterThan(waits[0]);
+    expect(waits[2]).toBeGreaterThan(waits[1]);
+    expect(clock).toBeLessThanOrEqual(180000);
   });
 
   it("polls until success without holding the loop open", async () => {

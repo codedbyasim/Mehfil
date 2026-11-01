@@ -11,7 +11,7 @@ import {
   normalizeHex,
   undertoneFromLab,
 } from "@/lib/color";
-import { concern, positiveSimFields, simulationFromSkin, skinTypeLabelText } from "@/lib/skin";
+import { concern, displayScores, positiveSimFields, simulationFromSkin, skinTypeLabelText } from "@/lib/skin";
 import type {
   GarmentCategory,
   LookPlan,
@@ -630,6 +630,7 @@ export function planWedding(input: PlanInput): WeddingPlan {
     seen.add(key);
     return true;
   });
+  const scores = displayScores(input.skin);
   const plan: WeddingPlan = {
     source: "rules",
     vtoOrder: choice.order,
@@ -642,6 +643,9 @@ export function planWedding(input: PlanInput): WeddingPlan {
       itaBand: ita === null ? null : itaBand(ita),
       finish,
       skinTypeLabel: skinTypeLabelText(input.skin.skinType),
+      overall: scores.overall,
+      skinAge: scores.skinAge,
+      darkCircles: scores.darkCircles,
     },
     looks,
     simulation: {

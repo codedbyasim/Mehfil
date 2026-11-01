@@ -119,6 +119,10 @@ export type WeddingPlan = {
     itaBand: string | null;
     finish: "matte" | "satin";
     skinTypeLabel: string;
+    /** Shown on the skin page. Kept off the prose so a copy rewrite cannot blank them. */
+    overall: number | null;
+    skinAge: number | null;
+    darkCircles: number | null;
   };
   looks: LookPlan[];
   simulation: {

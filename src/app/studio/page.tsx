@@ -58,8 +58,13 @@ export default function StudioPage() {
     setRunning(true);
     try {
       setLiveCharged(0);
+      setSession((current) => (current ? { ...current, unitsCharged: 0 } : current));
       const result = await runLiveSession(session!, (update) => {
-        if (update.units && update.units > 0) setLiveCharged((total) => total + update.units!);
+        if (update.units && update.units > 0) {
+          const units = update.units;
+          setLiveCharged((total) => total + units);
+          setSession((current) => (current ? { ...current, unitsCharged: current.unitsCharged + units } : current));
+        }
         setStatuses((current) => ({ ...current, [update.traceId]: update.status }));
       });
       setSession(result.session);

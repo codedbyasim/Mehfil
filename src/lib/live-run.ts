@@ -49,17 +49,29 @@ async function runFeature(feature: string, input: Record<string, unknown>): Prom
     error.fallback = created.fallback;
     throw error;
   }
+  const slow = feature === "cloth-v4";
   const done = await pollJson(`/api/youcam/task/${feature}/${encodeURIComponent(created.taskId)}?inline=1`, {
-    intervalMs: 3000,
-    capMs: 120000,
+    intervalMs: slow ? 4000 : 3000,
+    capMs: slow ? 180000 : 120000,
+    backoff: slow ? 1.35 : undefined,
+    maxIntervalMs: slow ? 12000 : undefined,
   });
   if (done.taskStatus === "error") {
     const error = new Error(done.hint || done.error || "task_error") as Error & { code?: string };
     error.code = done.error;
     throw error;
   }
-  if (done.taskStatus !== "success") throw new Error("The task took too long. A failed task is not charged.");
+  if (done.taskStatus !== "success") {
+    const error = new Error("The task took too long. A failed task is not charged.") as Error & { code?: string };
+    error.code = "timeout";
+    throw error;
+  }
   return { ...done, units: created.units ?? 0 };
+}
+
+function isTimeoutError(error: unknown): boolean {
+  const code = (error as { code?: string }).code;
+  return code === "timeout" || (error instanceof Error && /took too long/i.test(error.message));
 }
 
 async function blobFromUrl(url: string): Promise<Blob> {
@@ -240,6 +252,21 @@ export async function runLiveSession(
       return uploadBlob(blob, `${event.id}.jpg`);
     };
 
+    const tryCloth = async (traceId: string, input: Record<string, unknown>) => {
+      try {
+        return await charge(traceId, () => runFeature("cloth-v4", input));
+      } catch (error) {
+        if (!isTimeoutError(error)) return null;
+        onUpdate({ traceId, status: "running", detail: "That outfit is still rendering. Trying it once more." });
+        try {
+          return await charge(traceId, () => runFeature("cloth-v4", input));
+        } catch {
+          return null;
+        }
+      }
+    };
+
+    const missed: string[] = [];
     if (plan.vtoOrder === "makeup-first") {
       const makeup = await charge("makeup", () => runFeature("makeup-vto", { fileId: fullId, effects: plan?.looks[0]?.effects ?? [] }));
       if (!makeup.dataUrl) throw new Error("Makeup did not return an image.");
@@ -248,28 +275,49 @@ export async function runLiveSession(
         const event = events.find((item) => item.id === look.eventId);
         if (!event) continue;
         const refId = await uploadGarment(event);
-        const cloth = await charge(`cloth-${look.eventId}`, () =>
-          runFeature("cloth-v4", { srcFileId: groomedId, refFileId: refId, garmentCategory: look.garmentCategory }),
-        );
-        if (cloth.dataUrl) event.tryOnImage = cloth.dataUrl;
-        event.beforeImage = session.selfieUrl;
+        const cloth = await tryCloth(`cloth-${look.eventId}`, {
+          srcFileId: groomedId,
+          refFileId: refId,
+          garmentCategory: look.garmentCategory,
+        });
+        if (cloth?.dataUrl) {
+          event.tryOnImage = cloth.dataUrl;
+          event.beforeImage = session.selfieUrl;
+        } else {
+          missed.push(look.name);
+        }
       }
     } else {
       for (const look of plan.looks) {
         const event = events.find((item) => item.id === look.eventId);
         if (!event) continue;
         const refId = await uploadGarment(event);
-        const cloth = await charge(`cloth-${look.eventId}`, () =>
-          runFeature("cloth-v4", { srcFileId: fullId, refFileId: refId, garmentCategory: look.garmentCategory }),
-        );
-        if (!cloth.dataUrl) throw new Error(`${look.name} try-on did not return an image.`);
-        const dressedId = await uploadBlob(dataUrlToBlob(cloth.dataUrl), `${look.eventId}.png`);
-        const makeup = await charge(`makeup-${look.eventId}`, () =>
-          runFeature("makeup-vto", { fileId: dressedId, effects: look.effects }),
-        );
-        event.tryOnImage = makeup.dataUrl || cloth.dataUrl;
-        event.beforeImage = session.selfieUrl;
+        const cloth = await tryCloth(`cloth-${look.eventId}`, {
+          srcFileId: fullId,
+          refFileId: refId,
+          garmentCategory: look.garmentCategory,
+        });
+        if (!cloth?.dataUrl) {
+          missed.push(look.name);
+          continue;
+        }
+        try {
+          const dressedId = await uploadBlob(dataUrlToBlob(cloth.dataUrl), `${look.eventId}.png`);
+          const makeup = await charge(`makeup-${look.eventId}`, () =>
+            runFeature("makeup-vto", { fileId: dressedId, effects: look.effects }),
+          );
+          event.tryOnImage = makeup.dataUrl || cloth.dataUrl;
+          event.beforeImage = session.selfieUrl;
+        } catch {
+          event.tryOnImage = cloth.dataUrl;
+          event.beforeImage = session.selfieUrl;
+          missed.push(`${look.name} makeup`);
+        }
       }
+    }
+    if (missed.length) {
+      const line = `${missed.join(" and ")} didn't finish. The other looks are still here.`;
+      notice = notice ? `${notice} ${line}` : line;
     }
     onUpdate({ traceId: "critique", status: "done" });
     await settle(true);
