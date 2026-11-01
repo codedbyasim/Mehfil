@@ -102,8 +102,8 @@ export async function settleTask(grant: RunGrant, taskId: string, outcome: "ok" 
   return finishTask(grant, taskId, outcome);
 }
 
-export async function endRun(grant: RunGrant) {
-  return closeRun(grant);
+export async function endRun(grant: RunGrant, delivered: boolean) {
+  return closeRun(grant, delivered);
 }
 
 export { capMessage };

@@ -214,14 +214,19 @@ export async function finishTask(grant: RunGrant, taskId: string, outcome: "ok" 
   return next;
 }
 
-export async function closeRun(grant: RunGrant): Promise<number> {
+export async function closeRun(grant: RunGrant, delivered: boolean): Promise<{ used: number; runIds: string[]; day: string }> {
   let used = grant.charged;
+  let runIds: string[] = [];
+  let day = "";
   await updateLedger((ledger) => {
     const reservation = ledger.reservations[grant.runId];
     used = Math.max(grant.charged, reservation?.charged ?? 0);
-    return finishRun(ledger, grant.runId, used);
+    const next = finishRun(ledger, grant.runId, used, Date.now(), { delivered, visitor: grant.visitor });
+    runIds = next.runsByIp[grant.visitor] ?? [];
+    day = next.day;
+    return next;
   });
-  return used;
+  return { used, runIds, day };
 }
 
 export function resetLedgerForTests() {

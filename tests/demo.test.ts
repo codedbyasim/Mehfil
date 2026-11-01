@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { sessionFromManifest, type DemoManifest } from "@/lib/demo";
-import { cropAroundFace, faceWidthRatio, isFaceSizeError } from "@/lib/crop";
+import { cropAroundFace, faceWidthRatio, isFaceBoundError, isFaceSizeError } from "@/lib/crop";
 import { ERROR_HINTS, taskSpec } from "@/lib/payloads";
 import { sniffImage } from "@/lib/sniff";
 import { normalizeSkin, toneFactsForDisplay } from "@/lib/skin";
@@ -107,20 +107,33 @@ describe("demo path", () => {
 });
 
 describe("youcam payload shapes", () => {
-  it("crops a face to about seventy-two percent of the width", () => {
-    const crop = cropAroundFace({ width: 1080, height: 1350 }, { x: 390, y: 180, width: 280, height: 340 });
-    const ratio = faceWidthRatio(crop.width, 280);
-    expect(ratio).toBeGreaterThan(0.68);
-    expect(ratio).toBeLessThan(0.76);
-    const reported = cropAroundFace({ width: 1080, height: 1350 }, { x: 300, y: 180, width: 462, height: 520 });
-    expect(reported.width).toBe(642);
-    expect(reported.height).toBe(802);
-    const tighter = cropAroundFace({ width: 1080, height: 1350 }, { x: 300, y: 180, width: 462, height: 520 }, { faceWidthRatio: 0.84 });
-    expect(tighter.width).toBeLessThan(reported.width);
+  it("pads a 347px detector box to about 640px so the forehead stays in frame", () => {
+    const image = { width: 1080, height: 1350 };
+    const blaze = { x: 366, y: 280, width: 347, height: 430 };
+    const crop = cropAroundFace(image, blaze);
+    expect(crop.width).toBeGreaterThanOrEqual(620);
+    expect(crop.width).toBeLessThanOrEqual(660);
+    expect(crop.x).toBeGreaterThanOrEqual(0);
+    expect(crop.y).toBeGreaterThanOrEqual(0);
+    expect(crop.x + crop.width).toBeLessThanOrEqual(image.width);
+    expect(crop.y + crop.height).toBeLessThanOrEqual(image.height);
+    const raw = faceWidthRatio(crop.width, blaze.width);
+    expect(raw).toBeGreaterThan(0.5);
+    expect(raw).toBeLessThan(0.6);
+    const tighter = cropAroundFace(image, blaze, { faceWidthRatio: 0.84 });
+    expect(tighter.width).toBeLessThan(crop.width);
+    const looser = cropAroundFace(image, blaze, { faceWidthRatio: 0.45, pad: false });
+    expect(looser.width).toBeGreaterThan(crop.width);
     expect(isFaceSizeError("error_src_face_too_small")).toBe(true);
     expect(isFaceSizeError("error_face_position_too_small")).toBe(true);
-    expect(ERROR_HINTS.error_src_face_too_small).toMatch(/tighter/i);
-    expect(ERROR_HINTS.error_face_position_too_small).toMatch(/too small/i);
+    expect(isFaceBoundError("error_src_face_out_of_bound")).toBe(true);
+    expect(isFaceSizeError("error_src_face_out_of_bound")).toBe(false);
+    expect(ERROR_HINTS.error_src_face_out_of_bound).toMatch(/looser/i);
+    expect(ERROR_HINTS.invalid_params).toBeTruthy();
+    expect(ERROR_HINTS.below_min_image_size).toBeTruthy();
+    expect(ERROR_HINTS.error_below_min_image_size).toBeTruthy();
+    expect(ERROR_HINTS.exceed_max_image_size).toBeTruthy();
+    expect(ERROR_HINTS.error_exceed_max_image_size).toBeTruthy();
   });
 
   it("builds the verified task bodies", () => {

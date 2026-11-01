@@ -81,7 +81,7 @@ export default function CapturePage() {
         <p className="text-xs uppercase tracking-[0.22em] text-gold">Photo</p>
         <h1 className="display mt-2 text-5xl text-maroon-deep">One portrait, two crops.</h1>
         <p className="mt-3 max-w-xl text-muted">
-          Skin analysis, color tones, and the skin goal need a face that fills about seventy-two percent of the crop. If that is still too small, MEHFIL retries once tighter. Outfit try-on keeps the full photo. Nothing is uploaded until you continue in live mode. A chest-up photo tries the upper body. A full-length photo can try a lehenga, gharara, or sherwani as a full garment.
+          Skin analysis, color tones, and the skin goal need the forehead and ears inside the crop. If the face is cut off, MEHFIL retries looser. If it is too small, MEHFIL retries once tighter. Outfit try-on keeps the full photo. Nothing is uploaded until you continue in live mode. A chest-up photo tries the upper body. A full-length photo can try a lehenga, gharara, or sherwani as a full garment.
         </p>
         <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-gold bg-paper px-6 py-12 text-center">
           <span className="display text-3xl text-maroon">Drop a JPEG or PNG</span>

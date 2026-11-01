@@ -430,7 +430,7 @@ function buildTrace(input: PlanInput, order: VtoOrder, looks: LookPlan[], simFie
       id: "crop",
       title: "Face crop",
       detail:
-        "Skin analysis, color tones, and skin simulation use a crop where the face fills about seventy-two percent of the width. If the face is still too small, MEHFIL retries once with a tighter crop. Outfit try-on keeps the full photo.",
+        "Skin analysis, color tones, and skin simulation use a crop that keeps the forehead and ears in frame. A face that is cut off is retried looser. A face that is too small is retried once tighter. Outfit try-on keeps the full photo.",
       units: 0,
     },
     {

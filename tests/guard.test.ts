@@ -57,6 +57,25 @@ describe("unit guard", () => {
     expect(later.ledger.reserved).toBe(0);
   });
 
+  it("frees the visitor slot when a run delivers nothing and caps repeated failures", () => {
+    const first = beginRun(emptyLedger("2026-10-28"), { runId: "a", ip: "ip1", estimate: 40, now }, limits);
+    const failed = finishRun(first.ledger, "a", 12, now + 1000, { delivered: false });
+    expect(failed.spent).toBe(12);
+    expect(failed.reserved).toBe(0);
+    expect(failed.runsByIp.ip1 ?? []).not.toContain("a");
+    expect(failed.failedByIp?.ip1).toEqual(["a"]);
+    const retry = beginRun(failed, { runId: "b", ip: "ip1", estimate: 40, now: now + 2000 }, limits);
+    expect(retry.allow).toBe(true);
+    let ledger = retry.ledger;
+    ledger = finishRun(ledger, "b", 4, now + 3000, { delivered: false });
+    const third = beginRun(ledger, { runId: "c", ip: "ip1", estimate: 40, now: now + 4000 }, limits);
+    ledger = finishRun(third.ledger, "c", 0, now + 5000, { delivered: false });
+    const blocked = beginRun(ledger, { runId: "d", ip: "ip1", estimate: 40, now: now + 6000 }, limits);
+    expect(blocked.allow).toBe(false);
+    expect(blocked.reason).toBe("failed");
+    expect(blocked.ledger.spent).toBe(16);
+  });
+
   it("counts signed-cookie runs toward the visitor cap", () => {
     const third = beginRun(emptyLedger("2026-10-28"), { runId: "c", ip: "ip1", estimate: 10, knownRunIds: ["a", "b"], now }, limits);
     expect(third.allow).toBe(false);

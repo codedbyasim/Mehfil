@@ -1,5 +1,5 @@
 import { capMessage } from "@/lib/cap-message";
-import { cropAroundFace, isFaceSizeError, TIGHTER_FACE_WIDTH_RATIO } from "@/lib/crop";
+import { cropAroundFace, isFaceBoundError, isFaceSizeError, LOOSER_FACE_WIDTH_RATIOS, TIGHTER_FACE_WIDTH_RATIO } from "@/lib/crop";
 import { cropToCanvas } from "@/lib/detect-face";
 import { pollJson, type PollResult } from "@/lib/poll";
 import { planWedding } from "@/lib/planner";
@@ -58,7 +58,7 @@ async function runFeature(feature: string, input: Record<string, unknown>): Prom
     error.code = done.error;
     throw error;
   }
-  if (done.taskStatus !== "success") throw new Error("The task took too long. Nothing was charged for a failed task.");
+  if (done.taskStatus !== "success") throw new Error("The task took too long. A failed task is not charged.");
   return { ...done, units: created.units ?? 0 };
 }
 
@@ -120,38 +120,84 @@ export async function runLiveSession(
       onUpdate({ traceId: id, status: "done", units: result.units });
       return result;
     } catch (error) {
-      onUpdate({ traceId: id, status: "error", detail: error instanceof Error ? error.message : "failed" });
+      onUpdate({
+        traceId: id,
+        status: "error",
+        detail: error instanceof Error ? error.message : "failed",
+        units: 0,
+      });
       throw error;
     }
   };
 
+  const settle = (delivered: boolean) =>
+    fetch("/api/run/finish", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ runId, delivered }),
+    }).catch(() => undefined);
+
+  let faceCropUrl = session.faceCropUrl;
+  const events = session.events.map((event) => ({ ...event }));
+  let plan: WeddingPlan | undefined = session.plan;
+  let simulationImage = session.simulationImage;
+  let notice: string | undefined;
+
   try {
     onUpdate({ traceId: "crop", status: "done" });
     let faceId = await uploadBlob(await blobFromUrl(session.faceCropUrl), "face-crop.jpg");
+    let cropWidth = 0;
+    if (session.selfieUrl && session.faceBox) {
+      const image = await loadHtmlImage(session.selfieUrl);
+      cropWidth = cropAroundFace({ width: image.naturalWidth, height: image.naturalHeight }, session.faceBox).width;
+    }
     let tightened = false;
-    const tightenFace = async () => {
-      if (tightened || !session.selfieUrl || !session.faceBox) return false;
-      tightened = true;
+    let looserStep = 0;
+
+    const recrop = async (ratio: number, pad: boolean, name: string) => {
+      if (!session.selfieUrl || !session.faceBox) return false;
       const image = await loadHtmlImage(session.selfieUrl);
       const rect = cropAroundFace(
         { width: image.naturalWidth, height: image.naturalHeight },
         session.faceBox,
-        { faceWidthRatio: TIGHTER_FACE_WIDTH_RATIO },
+        { faceWidthRatio: ratio, pad },
       );
+      if (pad === false && rect.width <= cropWidth + 8) return false;
       const url = cropToCanvas(image, rect);
-      faceId = await uploadBlob(dataUrlToBlob(url), "face-crop-tight.jpg");
+      faceId = await uploadBlob(dataUrlToBlob(url), name);
+      faceCropUrl = url;
+      cropWidth = rect.width;
       return true;
     };
-    const runFace = async (traceId: string, feature: string, extra: Record<string, unknown> = {}) => {
-      try {
-        return await charge(traceId, () => runFeature(feature, { ...extra, fileId: faceId }));
-      } catch (error) {
-        const code = (error as { code?: string }).code ?? (error instanceof Error ? error.message : "");
-        if (!isFaceSizeError(code) || !(await tightenFace())) throw error;
-        onUpdate({ traceId, status: "running", detail: "Retrying with a tighter face crop." });
-        return charge(traceId, () => runFeature(feature, { ...extra, fileId: faceId }));
+
+    const runFace = async (traceId: string, feature: string, extra: Record<string, unknown> = {}): Promise<PollResult & { units: number }> => {
+      for (;;) {
+        try {
+          return await charge(traceId, () => runFeature(feature, { ...extra, fileId: faceId }));
+        } catch (error) {
+          const code = (error as { code?: string }).code ?? (error instanceof Error ? error.message : "");
+          if (isFaceSizeError(code) && !tightened && (await recrop(TIGHTER_FACE_WIDTH_RATIO, true, "face-crop-tight.jpg"))) {
+            tightened = true;
+            onUpdate({ traceId, status: "running", detail: "Retrying with a tighter face crop." });
+            continue;
+          }
+          if (isFaceBoundError(code)) {
+            let loosened = false;
+            while (looserStep < LOOSER_FACE_WIDTH_RATIOS.length && !loosened) {
+              const ratio = LOOSER_FACE_WIDTH_RATIOS[looserStep];
+              looserStep += 1;
+              loosened = await recrop(ratio, false, `face-crop-loose-${looserStep}.jpg`);
+            }
+            if (loosened) {
+              onUpdate({ traceId, status: "running", detail: "Retrying with a looser face crop." });
+              continue;
+            }
+          }
+          throw error;
+        }
       }
     };
+
     const skin = await runFace("skin", "skin-analysis");
     const tone = await runFace("tone", "skin-tone-analysis");
     const planInput = {
@@ -163,7 +209,7 @@ export async function runLiveSession(
       events: session.events,
       placeholder: false,
     };
-    let plan: WeddingPlan = planWedding(planInput);
+    plan = planWedding(planInput);
     const planned = (await fetch("/api/plan", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -172,8 +218,20 @@ export async function runLiveSession(
     if (planned?.looks) plan = { ...planned, unitsCharged: 0 };
     onUpdate({ traceId: "order", status: "done" });
 
+    try {
+      const simulation = await runFace("sim", "skin-simulation", { simulation: plan.simulation.intensities });
+      if (simulation.dataUrl) simulationImage = simulation.dataUrl;
+    } catch (error) {
+      notice = "The outfit and makeup are still yours. The event-day skin preview didn't finish, so that frame stays on the portrait.";
+      onUpdate({
+        traceId: "sim",
+        status: "error",
+        detail: error instanceof Error ? error.message : notice,
+        units: 0,
+      });
+    }
+
     const fullId = await uploadBlob(await blobFromUrl(session.selfieUrl), "portrait.jpg");
-    const events = session.events.map((event) => ({ ...event }));
     const uploadGarment = async (event: (typeof events)[number]) => {
       const catalog = (await import("@/lib/outfits")).outfitById(event.outfitId);
       const source = event.garmentImage || catalog?.image;
@@ -183,7 +241,7 @@ export async function runLiveSession(
     };
 
     if (plan.vtoOrder === "makeup-first") {
-      const makeup = await charge("makeup", () => runFeature("makeup-vto", { fileId: fullId, effects: plan.looks[0]?.effects ?? [] }));
+      const makeup = await charge("makeup", () => runFeature("makeup-vto", { fileId: fullId, effects: plan?.looks[0]?.effects ?? [] }));
       if (!makeup.dataUrl) throw new Error("Makeup did not return an image.");
       const groomedId = await uploadBlob(dataUrlToBlob(makeup.dataUrl), "groomed.png");
       for (const look of plan.looks) {
@@ -214,30 +272,39 @@ export async function runLiveSession(
       }
     }
     onUpdate({ traceId: "critique", status: "done" });
-    const simulation = await runFace("sim", "skin-simulation", { simulation: plan.simulation.intensities });
-    await fetch("/api/run/finish", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ runId, used }),
-    });
+    await settle(true);
     return {
       units: used,
       session: {
         ...session,
-        mode: "live",
+        mode: "live" as const,
         events,
         plan,
-        simulationImage: simulation.dataUrl || session.simulationImage,
+        faceCropUrl,
+        simulationImage,
         unitsCharged: used,
-        fallbackBanner: undefined,
+        fallbackBanner: notice,
       },
     };
   } catch (error) {
-    await fetch("/api/run/finish", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ runId, used }),
-    }).catch(() => undefined);
+    const kept = events.some((event) => event.tryOnImage);
+    await settle(kept);
+    if (kept && plan) {
+      const detail = error instanceof Error ? error.message : "Part of the live run stopped.";
+      return {
+        units: used,
+        session: {
+          ...session,
+          mode: "live" as const,
+          events,
+          plan,
+          faceCropUrl,
+          simulationImage,
+          unitsCharged: used,
+          fallbackBanner: notice ?? `${detail} The looks that finished are still here.`,
+        },
+      };
+    }
     throw error;
   }
 }

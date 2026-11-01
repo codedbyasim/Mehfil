@@ -96,8 +96,8 @@ export function reportFromImage(input: {
       label: "One face",
       status: "pass",
       detail:
-        ratio >= 0.68
-          ? "A crop keeps the face near seventy-two percent of the width. Skin calls retry once tighter if needed."
+        ratio >= 0.45
+          ? "The crop keeps the forehead and ears in frame. Skin calls retry if the face is cut off or too small."
           : "The face is small. A full-length photo can still try on clothes. Skin calls will use a tighter crop.",
     });
   }

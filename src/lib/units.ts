@@ -47,6 +47,8 @@ export function estimateLiveUnits(options: {
 export type Limits = {
   daily: number;
   perIp: number;
+  /** Failed live runs per visitor per UTC day. They do not consume LIVE_RUNS_PER_IP. */
+  failedPerIp?: number;
   session: number;
   reservationTtlMs: number;
 };
@@ -59,6 +61,7 @@ export function limitsFromEnv(env: Record<string, string | undefined> = process.
     daily: Number.isFinite(daily) && daily > 0 ? daily : 150,
     perIp: Number.isFinite(perIp) && perIp > 0 ? perIp : 2,
     session: Number.isFinite(session) && session > 0 ? session : 60,
+    failedPerIp: 3,
     reservationTtlMs: 30 * 60 * 1000,
   };
 }
