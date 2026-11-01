@@ -72,6 +72,9 @@ export function EmptyWeek({ title }: { title: string }) {
       <p className="mt-3 max-w-xl text-muted">Open a week to see this screen with a plan, or start from your own photo.</p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href="/" className="rounded-full bg-maroon px-5 py-3 text-ivory">Back to the start</Link>
+        <button type="button" className="rounded-full border border-gold px-5 py-3" onClick={() => void loadDemo("bride")}>
+          Load the bride demo
+        </button>
         <button type="button" className="rounded-full border border-gold px-5 py-3" onClick={() => void loadDemo("groom")}>
           Load the groom demo
         </button>

@@ -14,47 +14,88 @@ export function parseJsonLoose(text: string): unknown {
   return JSON.parse(raw.slice(start, end + 1));
 }
 
-type LlmLook = { eventId?: string; lipHex?: string; why?: string };
+type LlmLook = { eventId?: string; lipHex?: string; why?: string; note?: string; copy?: string };
 
-export function mergeLlm(base: WeddingPlan, input: PlanInput, parsed: unknown): WeddingPlan | null {
+export type MergeOutcome = { plan: WeddingPlan; dropped: string[] };
+
+function wordingOf(suggestion: LlmLook): string {
+  if (typeof suggestion.why === "string" && suggestion.why.trim()) return suggestion.why.trim();
+  if (typeof suggestion.note === "string" && suggestion.note.trim()) return suggestion.note.trim();
+  if (typeof suggestion.copy === "string" && suggestion.copy.trim()) return suggestion.copy.trim();
+  return "";
+}
+
+export function mergeLlm(base: WeddingPlan, input: PlanInput, parsed: unknown): MergeOutcome | null {
   if (!parsed || typeof parsed !== "object") return null;
   const looks = (parsed as { looks?: LlmLook[] }).looks;
   if (!Array.isArray(looks)) return null;
-  const next: WeddingPlan = {
-    ...base,
-    source: "llm",
-    looks: base.looks.map((look) => {
-      const suggestion = looks.find((item) => item.eventId === look.eventId);
-      if (!suggestion) return look;
-      const lip = normalizeHex(suggestion.lipHex ?? "");
-      const why = typeof suggestion.why === "string" ? suggestion.why.trim() : "";
-      let updated = look;
-      if (lip && !colorsClash(lip, look.garmentHex)) {
-        updated = {
-          ...updated,
-          lipHex: lip,
-          effects: updated.effects.map((effect) => {
-            if (effect.category !== "lip_color") return effect;
-            const palettes = Array.isArray(effect.palettes) ? [...(effect.palettes as Array<Record<string, unknown>>)] : [];
-            if (palettes[0]) palettes[0] = { ...palettes[0], color: lip };
-            return { ...effect, palettes };
-          }),
-        };
+  const dropped: string[] = [];
+  let changed = false;
+  const nextLooks = base.looks.map((look) => {
+    const suggestion = looks.find((item) => item.eventId === look.eventId);
+    if (!suggestion) return look;
+    const lip = normalizeHex(suggestion.lipHex ?? "");
+    const why = wordingOf(suggestion);
+    let updated = look;
+    if (lip && !colorsClash(lip, look.garmentHex) && lip !== look.lipHex) {
+      updated = {
+        ...updated,
+        lipHex: lip,
+        effects: updated.effects.map((effect) => {
+          if (effect.category !== "lip_color") return effect;
+          const palettes = Array.isArray(effect.palettes) ? [...(effect.palettes as Array<Record<string, unknown>>)] : [];
+          if (palettes[0]) palettes[0] = { ...palettes[0], color: lip };
+          return { ...effect, palettes };
+        }),
+      };
+      changed = true;
+    } else if (lip && colorsClash(lip, look.garmentHex)) {
+      dropped.push(`${look.eventId} lip clashed with the garment`);
+    }
+    if (why) {
+      if (hasBannedClaim(why)) dropped.push(`${look.eventId} wording had a banned claim`);
+      else {
+        const stray = unsourcedNumbers(why, allowedNumbers(input, [updated.lipHex]));
+        if (stray.length) dropped.push(`${look.eventId} wording used ${stray.join(", ")}`);
+        else if (why !== look.why) {
+          updated = { ...updated, why };
+          changed = true;
+        }
       }
-      if (why && !hasBannedClaim(why) && unsourcedNumbers(why, allowedNumbers(input, [updated.lipHex])).length === 0) {
-        updated = { ...updated, why };
-      }
-      return updated;
-    }),
-  };
-  const stray = unsourcedNumbers(planProse(next), allowedNumbers(input, next.looks.map((look) => look.lipHex)));
-  if (stray.length || hasBannedClaim(planProse(next))) return null;
-  return next;
+    }
+    return updated;
+  });
+  if (!changed) return { plan: base, dropped };
+  const next: WeddingPlan = { ...base, source: "llm", looks: nextLooks };
+  const allowed = allowedNumbers(input, next.looks.map((look) => look.lipHex));
+  const prose = planProse(next);
+  const stray = unsourcedNumbers(prose, allowed);
+  if (stray.length || hasBannedClaim(prose)) {
+    dropped.push(stray.length ? `combined copy used ${stray.join(", ")}` : "combined copy had a banned claim");
+    const lipsOnly: WeddingPlan = {
+      ...next,
+      looks: next.looks.map((look, index) => ({ ...look, why: base.looks[index]?.why ?? look.why })),
+    };
+    const lipChanged = lipsOnly.looks.some((look, index) => look.lipHex !== base.looks[index]?.lipHex);
+    const lipsProse = planProse(lipChanged ? { ...lipsOnly, source: "llm" } : base);
+    if (!lipChanged || unsourcedNumbers(lipsProse, allowed).length || hasBannedClaim(lipsProse)) {
+      return { plan: base, dropped };
+    }
+    return { plan: { ...lipsOnly, source: "llm" }, dropped };
+  }
+  return { plan: next, dropped };
+}
+
+function logFallback(reason: string) {
+  console.warn(`[mehfil] llm copy fell back to the rules: ${reason}`);
 }
 
 export async function maybeEnhancePlan(input: PlanInput, base: WeddingPlan): Promise<WeddingPlan> {
   const key = process.env.AIML_API_KEY;
-  if (!key) return base;
+  if (!key) {
+    logFallback("AIML_API_KEY is unset");
+    return base;
+  }
   const model = process.env.AIML_MODEL || "gpt-4o-mini";
   const root = (process.env.AIML_BASE_URL || "https://api.aimlapi.com/v1").replace(/\/$/, "");
   const controller = new AbortController();
@@ -96,13 +137,26 @@ export async function maybeEnhancePlan(input: PlanInput, base: WeddingPlan): Pro
         ],
       }),
     });
-    if (!res.ok) return base;
+    if (!res.ok) {
+      logFallback(`the model returned HTTP ${res.status}`);
+      return base;
+    }
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const content = json.choices?.[0]?.message?.content;
-    if (!content) return base;
+    if (!content) {
+      logFallback("the model returned an empty message");
+      return base;
+    }
     const merged = mergeLlm(base, input, parseJsonLoose(content));
-    return merged ?? base;
-  } catch {
+    if (!merged) {
+      logFallback("the model JSON had no looks");
+      return base;
+    }
+    if (merged.dropped.length) logFallback(merged.dropped.join("; "));
+    return merged.plan;
+  } catch (error) {
+    const aborted = error instanceof Error && error.name === "AbortError";
+    logFallback(aborted ? "the model timed out" : `the model request failed (${error instanceof Error ? error.message : "error"})`);
     return base;
   } finally {
     clearTimeout(timer);

@@ -2,6 +2,7 @@
 
 import { EmptyWeek } from "@/components/shell";
 import { useSession } from "@/components/session";
+import { frameLabel } from "@/lib/demo";
 import { runLiveSession } from "@/lib/live-run";
 import type { TraceStep } from "@/lib/types";
 import Link from "next/link";
@@ -82,8 +83,12 @@ export default function StudioPage() {
             ? plan.orderReason
             : "Demo weeks already have a plan. A live photo runs skin analysis and color tones first, then the chain the role calls for."}
         </p>
-        {session.fallbackBanner ? <p className="mt-4 rounded-2xl bg-gold-bright/40 px-4 py-3 text-sm">{session.fallbackBanner} Showing the matching demo.</p> : null}
-        {session.placeholder ? <p className="mt-4 text-sm text-gold">Placeholder scores. Not a live scan.</p> : null}
+        {session.fallbackBanner ? (
+          <p className="mt-4 rounded-2xl border border-gold bg-gold-bright/40 px-4 py-3 text-sm" role="status">
+            {session.fallbackBanner}
+          </p>
+        ) : null}
+        <p className={`mt-4 text-sm ${session.placeholder ? "text-gold" : "text-muted"}`}>{frameLabel(session)}</p>
         <ol className="mt-6 space-y-3" aria-live="polite">
           {visible.map((step) => (
             <TraceRow key={step.id} step={step} status={statuses[step.id] ?? (session.mode === "demo" ? "demo" : "ready")} charged={session.mode === "demo" ? 0 : step.units} />

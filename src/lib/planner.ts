@@ -20,7 +20,6 @@ import type {
   PlanInput,
   Presentation,
   Role,
-  TimeOfDay,
   TraceStep,
   VtoOrder,
   WeddingPlan,
@@ -49,12 +48,110 @@ export function chooseOrder(role: Role, presentation: Presentation): { order: Vt
   };
 }
 
+const FULL_GARMENT = /lehenga|gharara|anarkali|sherwani/i;
+
 export function resolveGarmentCategory(
   framing: "chest-up" | "full-body",
   suggested: GarmentCategory,
+  outfitId = "",
 ): GarmentCategory {
   if (framing === "chest-up") return "upper_body";
+  if (FULL_GARMENT.test(outfitId) || suggested === "full_body") return "full_body";
   return suggested;
+}
+
+type BridePreset = {
+  mood: string;
+  lip: string;
+  lipTexture: "matte" | "gloss";
+  lipIntensity: number;
+  gloss: number;
+  blush: string;
+  blushIntensity: number;
+  shadow: string;
+  shadowIntensity: number;
+  shadowTexture: "matte" | "shimmer";
+  shimmer: string;
+  liner: string;
+  linerPattern: string;
+  linerIntensity: number;
+  smooth: number;
+  smoothColor: number;
+  foundation: { color: number; glow: number; coverage: number };
+};
+
+/**
+ * Presets taken from the live fictional-bride run.
+ * Mehndi is soft and fresh, Baraat is a bold classic red, Walima is soft glam pastel.
+ * Foundation color is filled from the measured skin hex at plan time.
+ */
+const BRIDE_PRESETS: Record<string, BridePreset> = {
+  mehndi: {
+    mood: "A soft fresh Mehndi look: light peach on the cheek, a glossy nude-coral lip, and a faint liner.",
+    lip: "#D0927E",
+    lipTexture: "gloss",
+    lipIntensity: 48,
+    gloss: 62,
+    blush: "#E7B09A",
+    blushIntensity: 26,
+    shadow: "#C4A48A",
+    shadowIntensity: 16,
+    shadowTexture: "matte",
+    shimmer: "#E7B09A",
+    liner: "#5A4038",
+    linerPattern: "Upper1",
+    linerIntensity: 18,
+    smooth: 30,
+    smoothColor: 18,
+    foundation: { color: 28, glow: 22, coverage: 22 },
+  },
+  baraat: {
+    mood: "A bold classic Baraat look: a matte red lip, a sharp liner, and a stronger cheek.",
+    lip: "#9E1C2C",
+    lipTexture: "matte",
+    lipIntensity: 78,
+    gloss: 0,
+    blush: "#C45C6C",
+    blushIntensity: 52,
+    shadow: "#5C2430",
+    shadowIntensity: 44,
+    shadowTexture: "matte",
+    shimmer: "#5C2430",
+    liner: "#1A0E0E",
+    linerPattern: "FullRim6",
+    linerIntensity: 76,
+    smooth: 52,
+    smoothColor: 36,
+    foundation: { color: 42, glow: 12, coverage: 40 },
+  },
+  walima: {
+    mood: "A soft glam pastel Walima look: a rosy-mauve gloss, a soft liner, and a light shimmer on the lid.",
+    lip: "#C98998",
+    lipTexture: "gloss",
+    lipIntensity: 46,
+    gloss: 55,
+    blush: "#E7B7C4",
+    blushIntensity: 24,
+    shadow: "#E4C8D0",
+    shadowIntensity: 28,
+    shadowTexture: "shimmer",
+    shimmer: "#F4E4EA",
+    liner: "#6A534C",
+    linerPattern: "Upper246",
+    linerIntensity: 26,
+    smooth: 34,
+    smoothColor: 22,
+    foundation: { color: 30, glow: 28, coverage: 24 },
+  },
+};
+
+function bridePreset(eventId: string): BridePreset {
+  return BRIDE_PRESETS[eventId] ?? BRIDE_PRESETS.mehndi;
+}
+
+function scaled(value: number, role: Role): number {
+  const factor = role === "guest" ? 0.72 : 1;
+  return Math.max(8, Math.min(90, Math.round(value * factor)));
 }
 
 function shown(value: number): number {
@@ -74,9 +171,8 @@ function proposeLip(input: PlanInput, event: PlanEvent, measuredLip: string): st
   if (input.debugForceLipHex && normalizeHex(input.debugForceLipHex)) {
     return normalizeHex(input.debugForceLipHex) as string;
   }
-  const strong = !naturalLipRole(input.role, input.presentation);
-  if (!strong) return measuredLip;
-  return lipFromGarment(event.garmentHex, event.timeOfDay, true);
+  if (naturalLipRole(input.role, input.presentation)) return measuredLip;
+  return bridePreset(event.id).lip;
 }
 
 function fallbackLip(input: PlanInput, event: PlanEvent, measuredLip: string): string {
@@ -84,15 +180,99 @@ function fallbackLip(input: PlanInput, event: PlanEvent, measuredLip: string): s
   return lipFromGarment(event.garmentHex, event.timeOfDay, true);
 }
 
-function intensity(base: number, time: TimeOfDay, role: Role): number {
-  const boost = time === "night" ? 14 : time === "evening" ? 8 : 0;
-  const scale = role === "bride" ? 1 : role === "guest" ? 0.72 : 0.45;
-  return Math.max(8, Math.min(88, Math.round(base * scale + boost * (role === "groom" ? 0.25 : 1))));
+function bridalEffects(input: PlanInput, event: PlanEvent, lipHex: string): MakeupEffect[] {
+  const preset = bridePreset(event.id);
+  const role = input.role;
+  const skinHex = input.tones.skinColor ?? "#C4A484";
+  const dark = concern(input.skin, "dark_circle_v2");
+  const underEye = dark?.raw !== null && dark?.raw !== undefined && dark.raw < 80;
+  const blush = mixHex(event.garmentHex, preset.blush, 0.35);
+  const shadow = mixHex(event.garmentHex, preset.shadow, 0.25);
+  const shadowPalette: Record<string, unknown> = {
+    color: shadow,
+    texture: preset.shadowTexture,
+    colorIntensity: scaled(preset.shadowIntensity, role),
+  };
+  if (preset.shadowTexture === "shimmer") {
+    shadowPalette.shimmerColor = preset.shimmer;
+    shadowPalette.shimmerIntensity = scaled(18, role);
+  }
+  const lipPalette: Record<string, unknown> = {
+    color: lipHex,
+    texture: preset.lipTexture,
+    colorIntensity: scaled(preset.lipIntensity, role),
+  };
+  if (preset.lipTexture === "gloss") {
+    lipPalette.gloss = preset.gloss;
+    lipPalette.transparencyIntensity = 28;
+  }
+  const effects: MakeupEffect[] = [
+    {
+      category: "skin_smooth",
+      skinSmoothStrength: scaled(preset.smooth, role),
+      skinSmoothColorIntensity: scaled(preset.smoothColor, role),
+    },
+    {
+      category: "foundation",
+      palettes: [
+        {
+          color: skinHex,
+          colorIntensity: scaled(preset.foundation.color, role),
+          glowIntensity: scaled(preset.foundation.glow, role),
+          coverageIntensity: scaled(preset.foundation.coverage, role),
+        },
+      ],
+    },
+  ];
+  if (underEye) {
+    effects.push({
+      category: "concealer",
+      palettes: [
+        {
+          color: lightenHex(skinHex, 0.12),
+          colorIntensity: scaled(24, role),
+          colorUnderEyeIntensity: scaled(40, role),
+          coverageLevel: scaled(30, role),
+        },
+      ],
+    });
+  }
+  effects.push(
+    {
+      category: "blush",
+      pattern: { name: "1color1" },
+      palettes: [{ color: blush, texture: "matte", colorIntensity: scaled(preset.blushIntensity, role) }],
+    },
+    {
+      category: "eye_shadow",
+      pattern: { name: "1color1" },
+      palettes: [shadowPalette],
+    },
+    {
+      category: "eye_liner",
+      pattern: { name: preset.linerPattern },
+      palettes: [
+        {
+          color: preset.liner,
+          texture: "matte",
+          colorIntensity: scaled(preset.linerIntensity, role),
+        },
+      ],
+    },
+    {
+      category: "lip_color",
+      shape: { name: "original" },
+      style: { type: "full" },
+      palettes: [lipPalette],
+    },
+  );
+  return effects;
 }
 
-function buildEffects(input: PlanInput, event: PlanEvent, lipHex: string, finish: "matte" | "satin"): MakeupEffect[] {
+function buildEffects(input: PlanInput, _event: PlanEvent, lipHex: string, finish: "matte" | "satin"): MakeupEffect[] {
+  if (!naturalLipRole(input.role, input.presentation)) return bridalEffects(input, _event, lipHex);
   const skinHex = input.tones.skinColor ?? "#C4A484";
-  const natural = naturalLipRole(input.role, input.presentation);
+  const natural = true;
   const dark = concern(input.skin, "dark_circle_v2");
   const underEye = dark?.raw !== null && dark?.raw !== undefined && dark.raw < 80;
   const smooth = natural ? 22 : input.role === "bride" ? 42 : 32;
@@ -127,31 +307,6 @@ function buildEffects(input: PlanInput, event: PlanEvent, lipHex: string, finish
       ],
     });
   }
-  if (!natural) {
-    const blush = mixHex(event.garmentHex, "#C47A74", 0.45);
-    effects.push({
-      category: "blush",
-      pattern: { name: "1color1" },
-      palettes: [
-        {
-          color: blush,
-          texture: "matte",
-          colorIntensity: intensity(36, event.timeOfDay, input.role),
-        },
-      ],
-    });
-    effects.push({
-      category: "eye_shadow",
-      pattern: { name: "1color1" },
-      palettes: [
-        {
-          color: mixHex(event.garmentHex, "#3A241C", 0.35),
-          texture: "matte",
-          colorIntensity: intensity(30, event.timeOfDay, input.role),
-        },
-      ],
-    });
-  }
   effects.push({
     category: "lip_color",
     shape: { name: "original" },
@@ -160,7 +315,7 @@ function buildEffects(input: PlanInput, event: PlanEvent, lipHex: string, finish
       {
         color: lipHex,
         texture: "matte",
-        colorIntensity: natural ? 18 : intensity(58, event.timeOfDay, input.role),
+        colorIntensity: 18,
       },
     ],
   });
@@ -170,8 +325,10 @@ function buildEffects(input: PlanInput, event: PlanEvent, lipHex: string, finish
 function shadeName(hex: string, kind: "lip" | "veil" | "under-eye"): string {
   if (kind === "veil") return "Sheer skin-matched veil";
   if (kind === "under-eye") return "Under-eye softener";
-  const { h, s } = hexToHsl(hex);
+  const { h, s, l } = hexToHsl(hex);
   if (s < 0.12) return "Sheer nude lip tint";
+  if ((h <= 16 || h >= 344) && l < 0.45 && s > 0.45) return "Bold red lip";
+  if (h < 40 && l > 0.55) return "Warm coral lip";
   if (h < 20 || h >= 340) return "Natural rose lip tint";
   if (h < 50) return "Warm coral lip";
   if (h < 75) return "Soft marigold lip";
@@ -184,11 +341,13 @@ function whyFor(input: PlanInput, event: PlanEvent, lipHex: string, finish: "mat
   const oily = concern(input.skin, "oiliness");
   const redness = concern(input.skin, "redness");
   const sentences: string[] = [];
-  sentences.push(`${event.garmentName} for ${event.name}, marked ${event.timeOfDay}.`);
+  const garment = event.garmentName && event.garmentName !== "undefined" ? event.garmentName : "The outfit";
+  sentences.push(`${garment} for ${event.name}, marked ${event.timeOfDay}.`);
   if (naturalLipRole(input.role, input.presentation)) {
     sentences.push("The lip stays near the measured lip color so grooming does not chase the clothes.");
   } else {
-    sentences.push("The lip follows the garment so the function reads as one look.");
+    sentences.push(bridePreset(event.id).mood);
+    sentences.push("Foundation is the measured skin color. The cheek and the lid take a little of the garment.");
   }
   if (replanned) sentences.push("The first lip clashed, so it was corrected once.");
   if (dark?.ui !== null && dark?.ui !== undefined && dark.raw !== null) {
@@ -199,10 +358,11 @@ function whyFor(input: PlanInput, event: PlanEvent, lipHex: string, finish: "mat
   if (input.skin.overall !== null) sentences.push(`Overall score ${shown(input.skin.overall)}.`);
   if (input.skin.skinAge !== null) sentences.push(`YouCam skin age score ${shown(input.skin.skinAge)}.`);
   if (oily?.raw !== null && oily?.raw !== undefined) {
+    const display = oily.ui !== null && oily.ui !== undefined ? `display ${shown(oily.ui)}, ` : "";
     sentences.push(
       finish === "matte"
-        ? `Oiliness raw ${shown(oily.raw)} keeps the veil matte.`
-        : `Oiliness raw ${shown(oily.raw)} leaves the veil sheer.`,
+        ? `Oiliness ${display}raw ${shown(oily.raw)} keeps the veil matte.`
+        : `Oiliness ${display}raw ${shown(oily.raw)} leaves the veil sheer.`,
     );
   }
   if (!naturalLipRole(input.role, input.presentation) && redness?.raw !== null && redness?.raw !== undefined && redness.raw < 80) {
@@ -270,7 +430,7 @@ function buildTrace(input: PlanInput, order: VtoOrder, looks: LookPlan[], simFie
       id: "crop",
       title: "Face crop",
       detail:
-        "Skin analysis, color tones, and skin simulation use a crop where the face fills about sixty percent of the width. Outfit try-on keeps the full photo.",
+        "Skin analysis, color tones, and skin simulation use a crop where the face fills about seventy-two percent of the width. If the face is still too small, MEHFIL retries once with a tighter crop. Outfit try-on keeps the full photo.",
       units: 0,
     },
     {
@@ -402,7 +562,7 @@ export function planWedding(input: PlanInput): WeddingPlan {
   const finish = finishFor(oil?.raw ?? null);
   const replannedIds: string[] = [];
   const looks: LookPlan[] = input.events.map((event) => {
-    const category = resolveGarmentCategory(input.framing, event.garmentCategory);
+    const category = resolveGarmentCategory(input.framing, event.garmentCategory, event.outfitId);
     const proposed = proposeLip(input, event, measuredLip);
     const natural = naturalLipRole(input.role, input.presentation);
     const clash = natural

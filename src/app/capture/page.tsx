@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "@/components/session";
+import { syntheticFace } from "@/lib/crop";
 import { cropToCanvas, detectFaces, fallbackCrop, resizeFull } from "@/lib/detect-face";
 import { meanLuma, reportFromImage, type QualityReport } from "@/lib/quality";
 import { useRouter } from "next/navigation";
@@ -42,6 +43,14 @@ export default function CapturePage() {
       const faceRect = next.faceCrop ?? fallbackCrop(image.naturalWidth, image.naturalHeight);
       const full = resizeFull(image);
       const crop = cropToCanvas(image, faceRect);
+      const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+      const sourceFace = next.face ?? syntheticFace(image.naturalWidth, image.naturalHeight);
+      const faceBox = {
+        x: Math.round(sourceFace.x * scale),
+        y: Math.round(sourceFace.y * scale),
+        width: Math.max(1, Math.round(sourceFace.width * scale)),
+        height: Math.max(1, Math.round(sourceFace.height * scale)),
+      };
       setReport(next);
       setPreview(full);
       setCropPreview(crop);
@@ -51,6 +60,7 @@ export default function CapturePage() {
           mode: session.scenarioId ? session.mode : "live",
           selfieUrl: full,
           faceCropUrl: crop,
+          faceBox,
           framing: next.framing,
           placeholder: false,
         });
@@ -71,7 +81,7 @@ export default function CapturePage() {
         <p className="text-xs uppercase tracking-[0.22em] text-gold">Photo</p>
         <h1 className="display mt-2 text-5xl text-maroon-deep">One portrait, two crops.</h1>
         <p className="mt-3 max-w-xl text-muted">
-          Skin analysis, color tones, and the skin goal need a face that fills about sixty percent of the width. Outfit try-on keeps the full photo, shoulders included. Nothing is uploaded until you continue in live mode.
+          Skin analysis, color tones, and the skin goal need a face that fills about seventy-two percent of the crop. If that is still too small, MEHFIL retries once tighter. Outfit try-on keeps the full photo. Nothing is uploaded until you continue in live mode. A chest-up photo tries the upper body. A full-length photo can try a lehenga, gharara, or sherwani as a full garment.
         </p>
         <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-gold bg-paper px-6 py-12 text-center">
           <span className="display text-3xl text-maroon">Drop a JPEG or PNG</span>

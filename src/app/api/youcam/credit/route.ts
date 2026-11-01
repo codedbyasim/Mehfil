@@ -1,16 +1,11 @@
 import { json } from "@/lib/http";
-import { YouCamError, creditBalance } from "@/server/youcam";
+import { boundGrant, runRequired } from "@/server/run-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!process.env.YOUCAM_API_KEY) return json({ available: false });
-  try {
-    const balance = await creditBalance();
-    return json({ available: true, balance });
-  } catch (error) {
-    const code = error instanceof YouCamError ? error.code : "credit_failed";
-    return json({ available: false, error: code }, 502);
-  }
+  if (!boundGrant(request)) return json(runRequired(), 401);
+  return json({ available: true });
 }

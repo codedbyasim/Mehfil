@@ -1,12 +1,15 @@
 import { sniffImage } from "@/lib/sniff";
 import { json } from "@/lib/http";
 import { YouCamError, uploadImage } from "@/server/youcam";
+import { ERROR_HINTS } from "@/lib/payloads";
+import { boundGrant, runRequired } from "@/server/run-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
 
 export async function POST(request: Request) {
-  if (!process.env.YOUCAM_API_KEY) return json({ error: "missing_api_key", fallback: "demo" }, 503);
+  if (!process.env.YOUCAM_API_KEY) return json({ error: "missing_api_key", hint: ERROR_HINTS.missing_api_key, fallback: "demo" }, 503);
+  if (!boundGrant(request)) return json(runRequired(), 401);
   const body = (await request.json().catch(() => null)) as { dataBase64?: string; fileName?: string; contentType?: string } | null;
   if (!body?.dataBase64) return json({ error: "bad_request" }, 400);
   const raw = body.dataBase64.replace(/^data:[^,]*,/, "");

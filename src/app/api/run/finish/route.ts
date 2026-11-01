@@ -1,12 +1,12 @@
 import { json } from "@/lib/http";
-import { settleRun } from "@/server/ledger-store";
+import { boundGrant, clearRunCookie, endRun, runRequired, withCookies } from "@/server/run-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => null)) as { runId?: string; used?: number } | null;
-  if (!body?.runId) return json({ error: "bad_request" }, 400);
-  const used = Math.max(0, Math.round(Number(body.used) || 0));
-  await settleRun(body.runId.slice(0, 80), used);
-  return json({ ok: true, used });
+  const grant = boundGrant(request);
+  const body = (await request.json().catch(() => null)) as { runId?: string } | null;
+  if (!grant || (body?.runId && body.runId.slice(0, 80) !== grant.runId)) return json(runRequired(), 401);
+  const used = await endRun(grant);
+  return withCookies(json({ ok: true, used }), [clearRunCookie(request)]);
 }

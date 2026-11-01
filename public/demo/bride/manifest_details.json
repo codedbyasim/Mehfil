@@ -1,0 +1,86 @@
+{
+ "generated": "2026-11-01 12:47-12:53 PKT",
+ "subject": "AI-generated fictional model (photorealistic South Asian woman made with Grok Bot image generation; not a real or famous person), bride path",
+ "source_photo": "input/bride_original.jpg (generated 864x1152, cropped 4:5 and resized to 1080x1350)",
+ "face_crop": "input/bride_face_crop_skin.jpg (600x750, face ~70% of width)",
+ "units": {
+  "before": 1869,
+  "after": 1824,
+  "used": 45,
+  "breakdown": {
+   "skin-analysis SD 7 concerns": 12,
+   "skin-tone-analysis": 20,
+   "cloth-v4 x3": 6,
+   "makeup-vto x3": 3,
+   "skin-simulation 4 concerns": 4
+  },
+  "failed_tasks": 0
+ },
+ "garments": [
+  {
+   "event": "Mehndi",
+   "file": "garments/mehndi_lehenga_yellow_green.jpg",
+   "source": "AI-generated product shot (Grok Bot GenerateImage), ghost mannequin on white, no faces/logos"
+  },
+  {
+   "event": "Baraat",
+   "file": "garments/baraat_lehenga_red_gold.jpg",
+   "source": "AI-generated product shot (Grok Bot GenerateImage), ghost mannequin on white, no faces/logos"
+  },
+  {
+   "event": "Walima",
+   "file": "garments/walima_gharara_pastel_silver.jpg",
+   "source": "AI-generated product shot (Grok Bot GenerateImage), ghost mannequin on white, no faces/logos"
+  }
+ ],
+ "makeup_effects": "raw/bride_makeup_effects.json (skin_smooth explicit; foundation #a68265 = face-tone skin_color)",
+ "outputs": [
+  {
+   "file": "tryon/cloth_mehndi_lehenga_yellow_green.jpg",
+   "api": "cloth-v4 upper_body",
+   "verdict": "Very good. Yellow choli with pink/green floral embroidery and green mirror-work dupatta border across the chest reproduced; sheer green dupatta overlay. Face same person but cloth-v4 re-renders skin with more visible freckles/texture."
+  },
+  {
+   "file": "makeup/cloth_then_makeup_mehndi.jpg",
+   "api": "cloth-v4 -> makeup-vto",
+   "verdict": "Natural, fresh: evened skin, light peach blush, glossy nude-coral lip, faint lashes. Best 'real-looking' result."
+  },
+  {
+   "file": "tryon/cloth_baraat_lehenga_red_gold.jpg",
+   "api": "cloth-v4 upper_body",
+   "verdict": "Best garment. Red velvet choli with dense gold zari, sweetheart neckline, red net dupatta with gold border over the shoulder all faithful."
+  },
+  {
+   "file": "makeup/cloth_then_makeup_baraat.jpg",
+   "api": "cloth-v4 -> makeup-vto",
+   "verdict": "Bold classic bridal look reads clearly: matte red lip, sharp winged liner, dense lashes, blush. Liner wing is graphic/strong and skin is noticeably lighter and smoother - striking for demo, a bit 'filtered' up close."
+  },
+  {
+   "file": "tryon/cloth_walima_gharara_pastel_silver.jpg",
+   "api": "cloth-v4 upper_body",
+   "verdict": "Good. Pastel pink kurti with silver split neckline and scattered sequins right; dupatta mostly lost (only a silver scalloped edge at right shoulder). Gharara not visible (chest-up)."
+  },
+  {
+   "file": "makeup/cloth_then_makeup_walima.jpg",
+   "api": "cloth-v4 -> makeup-vto",
+   "verdict": "Soft glam, natural: rosy-mauve gloss lip, soft liner, subtle shimmer lid, light blush. Pleasant and believable."
+  },
+  {
+   "file": "simulation/event_day_goal.png",
+   "api": "skin-simulation",
+   "params": {
+    "oiliness": 0.5,
+    "dark_circle": 0.5,
+    "pores": 0.4,
+    "texture": 0.3
+   },
+   "verdict": "Realistic and visible: nose/forehead shine reduced, pores and texture softened, under-eyes slightly brighter; freckles kept. Good honest before/after."
+  }
+ ],
+ "identity": "Same person in all 6 outputs (face shape, eyes, brows, hair bun). Only drift: cloth-v4 adds slightly more freckle texture; makeup step evens it back.",
+ "notes": [
+  "face-tone hair_color_name 'Auburn' is wrong again (hair is black); don't surface it",
+  "No makeup-only image for bride, so groomingImage is null in manifest.json",
+  "raw/ contains signed URLs (expire 2h); do not commit raw/"
+ ]
+}

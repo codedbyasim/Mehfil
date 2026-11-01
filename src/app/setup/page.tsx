@@ -5,10 +5,9 @@ import { eventsFor, useSession } from "@/components/session";
 import type { Presentation, Role, TimeOfDay } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
-const ROLES: Array<{ id: Role; label: string; copy: string }> = [
-  { id: "groom", label: "Groom", copy: "One grooming look, then each outfit." },
-  { id: "bride", label: "Bride", copy: "A different makeup for each function, on the outfit." },
-  { id: "guest", label: "Guest", copy: "Festive, not bridal. Lighter than the couple." },
+const PRIMARY: Array<{ id: Role; label: string; copy: string }> = [
+  { id: "bride", label: "Bride", copy: "Outfit first, then makeup on that result. Soft Mehndi, bold red Baraat, pastel Walima." },
+  { id: "groom", label: "Groom", copy: "One grooming look, then each outfit. The same recipe across the week." },
 ];
 
 export default function SetupPage() {
@@ -27,10 +26,10 @@ export default function SetupPage() {
       <header>
         <p className="text-xs uppercase tracking-[0.22em] text-gold">Week</p>
         <h1 className="display text-5xl text-maroon-deep">Who is dressing, and when.</h1>
-        <p className="mt-3 max-w-2xl text-muted">Pick the role, the three functions, and whether each one is day, evening, or night. Night looks are deeper. The groom path keeps one grooming recipe.</p>
+        <p className="mt-3 max-w-2xl text-muted">Bride and groom are the same kind of choice. Both can run live on your photo. Pick the three functions, and whether each one is day, evening, or night.</p>
       </header>
-      <div className="grid gap-3 md:grid-cols-3">
-        {ROLES.map((role) => (
+      <div className="grid gap-3 md:grid-cols-2">
+        {PRIMARY.map((role) => (
           <button
             key={role.id}
             type="button"
@@ -42,6 +41,14 @@ export default function SetupPage() {
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        onClick={() => setRole("guest")}
+        className={`rounded-3xl border px-5 py-4 text-left ${session.role === "guest" ? "border-maroon bg-maroon text-ivory" : "border-gold/30 bg-paper"}`}
+      >
+        <span className="display text-2xl">Guest</span>
+        <span className={`mt-1 block text-sm ${session.role === "guest" ? "text-ivory/80" : "text-muted"}`}>Festive, not bridal. Lighter than the couple. Dressing as a woman or a man.</span>
+      </button>
       {session.role === "guest" ? (
         <label className="flex items-center gap-3 text-sm">
           <span>Dressing as</span>

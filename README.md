@@ -2,7 +2,7 @@
 
 MEHFIL is a wedding-week look planner for South Asian celebrations. One portrait becomes Mehndi, Baraat, and Walima: the outfit and the grooming in a single frame, plus an event-day skin goal and a shoppable shade list with no brand names.
 
-The groom week ships with a real YouCam run. The subject is Muhammad Asim, who consented. Bride and guest weeks are labeled placeholder drawings until a consented live run replaces them.
+The groom week ships with a real YouCam run. The subject is Muhammad Asim, who consented. The bride week is a real YouCam run on an AI-generated fictional model, not a real person. The guest portrait is still a labeled drawing. Outfit photos for the bride and for a guest woman are product shots with no logos.
 
 ## The problem
 
@@ -24,14 +24,14 @@ Server: `https://yce-api-01.makeupar.com`. Auth is `Authorization: Bearer <YOUCA
 | **Makeup VTO** `POST /s2s/v2.0/task/makeup-vto` | `{ src_file_id, effects, version: "1.0" }`. `skin_smooth` is always sent, because omitting it silently applies 50. Foundation carries color, color intensity, glow, and coverage. Concealer carries color, color intensity, under-eye intensity, and coverage. Cost: 1 unit. |
 | **Skin Simulation** `POST /s2s/v2.0/task/skin-simulation` | A cosmetic event-day preview. Analysis names are mapped onto simulation fields: `dark_circle_v2` → `dark_circle`, `pore` → `pores`, `age_spot` → `spots`, `eye_bag` → `eye_bags`. The planner does not send `oiliness` on a fresh plan, because that scale adds shine at 1.0. The shipped groom preview is the recorded render (`dark_circle` 0.5, `texture` 0.3, `pores` 0.3, `oiliness` 0.4) and the slider is zoomed to the eyes, because the change is subtle. Cost: 4 units for 1–4 fields. |
 
-Skin analysis, color tones, and simulation need a face crop where the face fills about 60% of the width. Without it they return `error_face_position_too_small`. The browser crops with the built-in face detector or MediaPipe Face Detector before those calls. Clothes try-on uses the full photo.
+Skin analysis, color tones, and simulation need a face crop where the face fills about 72% of the width. A looser 64% crop returned `error_src_face_too_small` on a chest-up photo. The browser crops with the built-in face detector or MediaPipe Face Detector before those calls, and retries once at about 84% if YouCam still says the face is too small (`error_src_face_too_small` or `error_face_position_too_small`). Clothes try-on uses the full photo. A chest-up photo uses `upper_body`. A full-length photo of a lehenga, gharara, anarkali, or sherwani uses `full_body`.
 
 A result is fed into the next task by uploading it as a new file. Result URLs expire after about two hours, and makeup and simulation often return PNG bytes behind a `.jpg` name, so the server sniffs the bytes and hands the browser a data URL. The browser keeps the session in IndexedDB. No Blob store is required on the free tier.
 
 The planner chooses the order:
 
 - **Groom, or a guest dressing as a man.** One grooming look, then each outfit. Makeup runs once. Cheaper when the same grooming is reused, and it is what the live groom test compared as order B.
-- **Bride, or a guest dressing as a woman.** Outfit first, then makeup on that result, a different recipe per function. The live test found this order kept more real skin detail (order A on the Baraat sherwani).
+- **Bride, or a guest dressing as a woman.** Outfit first, then makeup on that result. The bride presets follow the fictional-model run: a soft fresh Mehndi (peach blush, glossy nude-coral lip, faint liner), a bold classic Baraat (matte red lip, sharp liner), and a soft glam pastel Walima (rosy-mauve gloss, soft liner, shimmer lid). Foundation uses the measured skin hex. `skin_smooth` is always explicit. The live groom test found this order kept more real skin detail (order A on the Baraat sherwani).
 
 The Baraat card in the groom demo can flip between the two orders. Both images are from the live run.
 
@@ -78,7 +78,17 @@ Failed tasks are not charged by YouCam. MEHFIL releases the unused part of a res
 | Reserved per run | 60 (`SESSION_UNIT_BUDGET`) |
 | Analysis cache | SHA-256 of the image, in memory on the server and in the browser |
 
-Past the cap, the API tells the page to fall back to the demo. Without Upstash, the ledger is the server instance plus the best effort of that process. Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to share it across instances.
+Past the cap, the API tells the page to fall back to the demo and says which cap was hit.
+
+Live YouCam calls require a run token from `/api/run/begin`. The token is an HttpOnly cookie, HMAC-signed with the server key, and bound to the visitor hash, an expiry, and the reserved units. `/api/youcam/task`, `/api/youcam/file`, and the task status route reject a request that does not carry it. Each accepted task is held against that reservation, and the hold becomes a charge only when the task succeeds. A failed task releases the hold. `/api/youcam/credit` does not return the unit balance.
+
+The per-visitor cap is also written to a signed visit cookie, so a browser that lands on another serverless instance still counts as the same visitor. The daily ceiling is shared when a store is configured:
+
+1. Upstash, if `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set.
+2. Otherwise a private Vercel Blob object, if `BLOB_READ_WRITE_TOKEN` is set.
+3. Otherwise the memory of that instance. The visit cookie still enforces the per-visitor cap for browsers that keep cookies.
+
+No Marketplace integration is required. On the Vercel project, open Storage, create a Blob store, and leave the injected `BLOB_READ_WRITE_TOKEN` in Production and Preview. That is the only new variable, and it is optional. Until it (or Upstash) is set, the daily ceiling is per instance.
 
 Do not call YouCam from tests. Tests use the manifests and mocks.
 
@@ -129,9 +139,10 @@ Replace a file and keep the path, or change the path in the manifest. Set `place
 
 | Images | Source |
 | --- | --- |
-| `public/demo/groom/garments/*.jpg` | AI-generated product shots made for this project. No logos, no faces, free to use. |
+| `public/demo/groom/garments/*.jpg`, `public/demo/bride/garments/*.jpg`, `public/demo/guest/garments/*.jpg` | AI-generated product shots made for this project. No logos, no faces, free to use. |
 | `public/demo/groom/tryon` and `makeup` and `simulation` | Outputs of the YouCam API on a consented portrait. |
-| `public/outfits/*.svg` and `public/demo/bride`, `public/demo/guest` | Original vector drawings made for MEHFIL. They are marked PLACEHOLDER. Not photographs. |
+| `public/demo/bride/tryon`, `makeup`, `simulation`, and `input` | Outputs of the YouCam API on an AI-generated fictional model. Not a real person. |
+| `public/demo/guest/*.svg` and `public/outfits/*.svg` | Original vector drawings made for MEHFIL. The guest portrait is marked PLACEHOLDER. Not a photograph. |
 
 ## Setup
 
@@ -155,21 +166,22 @@ Demo mode needs no environment variables. Copy `.env.example` to `.env.local` an
 | `DAILY_UNIT_CAP` | No | Default 150. |
 | `LIVE_RUNS_PER_IP` | No | Default 2. |
 | `SESSION_UNIT_BUDGET` | No | Default 60. |
-| `UPSTASH_REDIS_REST_URL` | No | Shared unit ledger. |
+| `UPSTASH_REDIS_REST_URL` | No | Shared unit ledger. Used before Blob when both are set. |
 | `UPSTASH_REDIS_REST_TOKEN` | No | Shared unit ledger. |
-| `IP_HASH_SALT` | No | Salt for visitor hashes. |
+| `BLOB_READ_WRITE_TOKEN` | No | Optional. Injected when a Vercel Blob store is created on the project. Holds the daily ceiling across instances. Not a Marketplace integration. |
+| `IP_HASH_SALT` | No | Salt for visitor hashes. Also mixed into the run-token HMAC with the YouCam key. |
 
-On Vercel, set the framework to Next.js, Node 20 or newer, install `npm install`, build `npm run build`. Put the variables above in Production and Preview. Do not mark the keys as exposed to the browser. Function duration stays at the default 10 seconds. No Blob store, no database.
+On Vercel, set the framework to Next.js, Node 20 or newer, install `npm install`, build `npm run build`. Put the variables above in Production and Preview. Do not mark the keys as exposed to the browser. Function duration stays at the default 10 seconds. A Blob store is optional and is only for the shared daily cap. There is no database.
 
 ### Demo and live
 
-The site opens in demo mode. “Open the groom week” spends nothing. “Use my photo” is live: the browser checks the file, crops the face, and the server refuses the run when the key is missing, the IP has used its two runs, or the daily ceiling would break. The page then loads the demo and says why.
+The site opens in demo mode. “Watch the bride week” and “Watch the groom week” spend nothing. “Try with your own photo” is live: the browser checks the file, crops the face, and the server refuses the run when the key is missing, the visitor has used two runs, or the daily ceiling would break. The page then loads the matching demo and says which cap was hit.
 
 ## Privacy
 
 There is no account. An uploaded photo is held only for the YouCam request and is not written to a database. Results live in IndexedDB on the device. The app does not infer ethnicity or health. Copy is cosmetic. Skin age is shown as YouCam’s score, not as a judgment.
 
-The groom portrait is a consented static asset. It is not an upload.
+The groom portrait is a consented static asset. It is not an upload. The bride portrait is an AI-generated fictional model, labeled as such. It is not a real person.
 
 ## Scripts
 

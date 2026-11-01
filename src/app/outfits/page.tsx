@@ -70,7 +70,7 @@ export default function OutfitsPage() {
         <p className="text-xs uppercase tracking-[0.22em] text-gold">Outfits</p>
         <h1 className="display text-5xl text-maroon-deep">Clothes for each function.</h1>
         <p className="mt-3 max-w-2xl text-muted">
-          Sample garments are either AI-generated product shots or original drawings. No brand marks. A chest-up photo tries the upper body. A full-length photo can try a lehenga or a full sherwani as a full garment.
+          Bride, groom, and guest-woman garments are AI-generated product shots. No brand marks and no faces. A chest-up photo tries the upper body. A full-length photo can try a lehenga, gharara, anarkali, or sherwani as a full garment.
         </p>
       </header>
       {session.events.map((event) => (

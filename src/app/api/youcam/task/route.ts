@@ -1,18 +1,28 @@
 import { ERROR_HINTS, taskSpec } from "@/lib/payloads";
 import { json } from "@/lib/http";
 import { YouCamError, createTask } from "@/server/youcam";
+import { gateTask, rememberTask, runCookie, runRequired, withCookies } from "@/server/run-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
 
 export async function POST(request: Request) {
-  if (!process.env.YOUCAM_API_KEY) return json({ error: "missing_api_key", fallback: "demo" }, 503);
+  if (!process.env.YOUCAM_API_KEY) return json({ error: "missing_api_key", hint: ERROR_HINTS.missing_api_key, fallback: "demo" }, 503);
   const body = (await request.json().catch(() => null)) as { feature?: string; input?: Record<string, unknown> } | null;
   if (!body?.feature || !body.input) return json({ error: "bad_request" }, 400);
   try {
     const spec = taskSpec(body.feature, body.input);
+    const gate = await gateTask(request, spec.units);
+    if ("error" in gate) return json({ error: gate.error, hint: gate.hint }, gate.status);
     const taskId = await createTask(spec.path, spec.body);
-    return json({ taskId, feature: spec.feature, units: spec.units });
+    const next = await rememberTask(gate.grant, taskId, spec.units);
+    if (typeof next === "string") {
+      return json(
+        { error: next, hint: next === "reservation_spent" ? "This live run has used the units it reserved." : runRequired().hint },
+        next === "reservation_spent" ? 409 : 401,
+      );
+    }
+    return withCookies(json({ taskId, feature: spec.feature, units: spec.units }), [runCookie(request, next)]);
   } catch (error) {
     const code = error instanceof YouCamError ? error.code : error instanceof Error ? error.message : "task_failed";
     const status = error instanceof YouCamError ? error.status : 400;

@@ -1,40 +1,101 @@
 {
   "id": "bride",
   "title": "Bride week",
-  "placeholder": true,
-  "subject": "Placeholder illustration, not a real person",
+  "placeholder": false,
+  "subject": "AI-generated fictional model",
+  "subjectNote": "Photorealistic AI-generated fictional South Asian woman (Grok Bot image generation). Not a real person; no consent needed; not modelled on anyone.",
   "role": "bride",
   "presentation": "woman",
   "framing": "chest-up",
   "vtoOrder": "cloth-first",
-  "selfie": "/demo/bride/selfie.svg",
-  "faceCrop": "/demo/bride/face.svg",
-  "simulationImage": "/demo/bride/simulation.svg",
-  "eyeFocus": { "x": 50, "y": 46, "scale": 1.6 },
-  "simulation": null,
+  "selfie": "/demo/bride/input/bride_original.jpg",
+  "faceCrop": "/demo/bride/input/bride_face_crop_skin.jpg",
+  "simulationImage": "/demo/bride/simulation/event_day_goal.png",
+  "groomingImage": null,
+  "eyeFocus": {
+    "x": 50,
+    "y": 39,
+    "scale": 1.85
+  },
+  "simulation": {
+    "dark_circle": 0.5,
+    "oiliness": 0.5,
+    "pores": 0.4,
+    "texture": 0.3
+  },
   "skin": {
     "output": [
-      { "type": "redness", "ui_score": 70, "raw_score": 61 },
-      { "type": "oiliness", "ui_score": 68, "raw_score": 58 },
-      { "type": "texture", "ui_score": 76, "raw_score": 72 },
-      { "type": "dark_circle_v2", "ui_score": 74, "raw_score": 70 },
-      { "type": "pore", "ui_score": 82, "raw_score": 80 },
-      { "type": "acne", "ui_score": 91, "raw_score": 90 },
-      { "type": "skin_type", "region": "whole", "skin_type": "Combination" },
-      { "type": "skin_type", "region": "t_zone", "skin_type": "Oily" },
-      { "type": "skin_type", "region": "u_zone", "skin_type": "Normal" },
-      { "type": "all", "score": 74 },
-      { "type": "skin_age", "score": 27 }
+      {
+        "type": "pore",
+        "ui_score": 73,
+        "raw_score": 62.88
+      },
+      {
+        "type": "redness",
+        "ui_score": 99,
+        "raw_score": 100.0
+      },
+      {
+        "type": "texture",
+        "ui_score": 80,
+        "raw_score": 77.62
+      },
+      {
+        "type": "dark_circle_v2",
+        "ui_score": 68,
+        "raw_score": 58.33
+      },
+      {
+        "type": "oiliness",
+        "ui_score": 65,
+        "raw_score": 44.4
+      },
+      {
+        "type": "acne",
+        "ui_score": 93,
+        "raw_score": 95.92
+      },
+      {
+        "type": "skin_type",
+        "region": "whole",
+        "skin_type": "Oily"
+      },
+      {
+        "type": "skin_type",
+        "region": "t_zone",
+        "skin_type": "Oily"
+      },
+      {
+        "type": "skin_type",
+        "region": "u_zone",
+        "skin_type": "Oily"
+      },
+      {
+        "type": "all",
+        "score": 79.67
+      },
+      {
+        "type": "skin_age",
+        "score": 30
+      }
     ]
   },
   "tones": {
-    "skin_color": "#C48A62",
-    "eye_color": "#3A2A22",
+    "eye_color": "#442F28",
     "eye_color_name": "Brown",
-    "lip_color": "#A85A55",
-    "eyebrow_color": "#4A342C",
-    "hair_color": "#2A160F",
-    "hair_color_name": "Black"
+    "lip_color": "#B06B65",
+    "eyebrow_color": "#3E3834",
+    "skin_color": "#A68265",
+    "hair_color": "#B56637",
+    "hair_color_name": "Auburn"
+  },
+  "masks": {
+    "oiliness": "/demo/bride/skin/mask_oiliness.jpg",
+    "dark_circle_v2": "/demo/bride/skin/mask_dark_circle_v2.jpg",
+    "pore": "/demo/bride/skin/mask_pore.jpg",
+    "texture": "/demo/bride/skin/mask_texture.jpg",
+    "acne": "/demo/bride/skin/mask_acne.jpg",
+    "redness": "/demo/bride/skin/mask_redness.jpg"
   },
   "events": [
     {
@@ -42,18 +103,24 @@
       "name": "Mehndi",
       "date": "2026-11-14",
       "timeOfDay": "evening",
-      "venue": "Courtyard",
+      "venue": "Family courtyard",
       "outfitId": "bride-mehndi-lehenga",
-      "tryOnImage": "/demo/bride/mehndi.svg"
+      "tryOnImage": "/demo/bride/makeup/cloth_then_makeup_mehndi.jpg",
+      "beforeImage": "/demo/bride/input/bride_original.jpg",
+      "alternateTryOn": "/demo/bride/tryon/cloth_mehndi_lehenga_yellow_green.jpg",
+      "alternateLabel": "Outfit only, no makeup"
     },
     {
       "id": "baraat",
       "name": "Baraat",
       "date": "2026-11-15",
       "timeOfDay": "night",
-      "venue": "Hall",
+      "venue": "Wedding hall",
       "outfitId": "bride-baraat-lehenga",
-      "tryOnImage": "/demo/bride/baraat.svg"
+      "tryOnImage": "/demo/bride/makeup/cloth_then_makeup_baraat.jpg",
+      "beforeImage": "/demo/bride/input/bride_original.jpg",
+      "alternateTryOn": "/demo/bride/tryon/cloth_baraat_lehenga_red_gold.jpg",
+      "alternateLabel": "Outfit only, no makeup"
     },
     {
       "id": "walima",
@@ -62,7 +129,10 @@
       "timeOfDay": "evening",
       "venue": "Dinner",
       "outfitId": "bride-walima-lehenga",
-      "tryOnImage": "/demo/bride/walima.svg"
+      "tryOnImage": "/demo/bride/makeup/cloth_then_makeup_walima.jpg",
+      "beforeImage": "/demo/bride/input/bride_original.jpg",
+      "alternateTryOn": "/demo/bride/tryon/cloth_walima_gharara_pastel_silver.jpg",
+      "alternateLabel": "Outfit only, no makeup"
     }
   ],
   "preferManifestPlan": false,

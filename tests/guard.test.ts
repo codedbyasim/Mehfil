@@ -57,6 +57,12 @@ describe("unit guard", () => {
     expect(later.ledger.reserved).toBe(0);
   });
 
+  it("counts signed-cookie runs toward the visitor cap", () => {
+    const third = beginRun(emptyLedger("2026-10-28"), { runId: "c", ip: "ip1", estimate: 10, knownRunIds: ["a", "b"], now }, limits);
+    expect(third.allow).toBe(false);
+    expect(third.reason).toBe("ip");
+  });
+
   it("resets the ledger on the next UTC day", () => {
     const ledger = beginRun(emptyLedger("2026-10-28"), { runId: "a", ip: "ip1", estimate: 40, now }, limits).ledger;
     const next = beginRun(ledger, { runId: "b", ip: "ip1", estimate: 40, now: Date.parse("2026-10-29T00:00:00Z") }, limits);
