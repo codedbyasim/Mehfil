@@ -8,6 +8,7 @@ export type DemoManifest = {
   title: string;
   placeholder: boolean;
   subject?: string;
+  subjectNote?: string;
   role: Role;
   presentation: "woman" | "man";
   framing: PhotoFraming;
@@ -15,7 +16,7 @@ export type DemoManifest = {
   selfie: string;
   faceCrop: string;
   simulationImage?: string;
-  groomingImage?: string;
+  groomingImage?: string | null;
   eyeFocus?: { x: number; y: number; scale: number };
   simulation?: Record<string, number> | null;
   skin: unknown;
@@ -88,6 +89,7 @@ export function sessionFromManifest(manifest: DemoManifest, today?: string): Ses
     scenarioId: manifest.id,
     placeholder: manifest.placeholder,
     subject: manifest.subject,
+    subjectNote: manifest.subjectNote,
     role: manifest.role,
     presentation: manifest.presentation,
     consent: true,
@@ -95,7 +97,7 @@ export function sessionFromManifest(manifest: DemoManifest, today?: string): Ses
     selfieUrl: manifest.selfie,
     faceCropUrl: manifest.faceCrop,
     simulationImage: manifest.simulationImage,
-    groomingImage: manifest.groomingImage,
+    groomingImage: manifest.groomingImage || undefined,
     masks: manifest.masks,
     eyeFocus: manifest.eyeFocus,
     events,
@@ -103,6 +105,15 @@ export function sessionFromManifest(manifest: DemoManifest, today?: string): Ses
     unitsCharged: 0,
     bag: [],
   };
+}
+
+export function frameLabel(session: { placeholder: boolean; subject?: string; subjectNote?: string }): string {
+  if (session.placeholder) return "Placeholder art, not a live try-on.";
+  const note = `${session.subjectNote ?? ""} ${session.subject ?? ""}`.toLowerCase();
+  if (note.includes("fictional") || note.includes("not a real")) {
+    return "Live YouCam frames on an AI-generated fictional model. Not a real person.";
+  }
+  return "Live YouCam frames of a person who consented.";
 }
 
 export function isDemoManifest(value: unknown): value is DemoManifest {

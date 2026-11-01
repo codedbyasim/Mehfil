@@ -3,6 +3,7 @@
 import { Compare } from "@/components/compare";
 import { EmptyWeek } from "@/components/shell";
 import { useSession } from "@/components/session";
+import { frameLabel } from "@/lib/demo";
 import { toneFactsForDisplay } from "@/lib/skin";
 import { useState } from "react";
 
@@ -31,7 +32,7 @@ export default function SkinPage() {
         <p className="text-xs uppercase tracking-[0.22em] text-gold">Skin</p>
         <h1 className="display text-5xl text-maroon-deep">The event-day goal.</h1>
         <p className="mt-3 max-w-2xl text-muted">{skin.simulation.note}</p>
-        {session.placeholder ? <p className="mt-2 text-sm text-gold">Placeholder scores and illustration. Not a live analysis.</p> : null}
+        <p className={`mt-2 text-sm ${session.placeholder ? "text-gold" : "text-muted"}`}>{frameLabel(session)}</p>
       </header>
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Overall" value={score(session, "overall")} />

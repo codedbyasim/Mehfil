@@ -1,3 +1,6 @@
+import { capMessage } from "@/lib/cap-message";
+import { cropAroundFace, isFaceSizeError, TIGHTER_FACE_WIDTH_RATIO } from "@/lib/crop";
+import { cropToCanvas } from "@/lib/detect-face";
 import { pollJson, type PollResult } from "@/lib/poll";
 import { planWedding } from "@/lib/planner";
 import { normalizeSkin, normalizeTones } from "@/lib/skin";
@@ -41,7 +44,8 @@ async function runFeature(feature: string, input: Record<string, unknown>): Prom
     body: JSON.stringify({ feature, input }),
   }).then((res) => res.json())) as { taskId?: string; units?: number; error?: string; fallback?: string; hint?: string };
   if (!created.taskId) {
-    const error = new Error(created.hint || created.error || "task_failed") as Error & { fallback?: string };
+    const error = new Error(created.hint || created.error || "task_failed") as Error & { code?: string; fallback?: string };
+    error.code = created.error;
     error.fallback = created.fallback;
     throw error;
   }
@@ -49,7 +53,11 @@ async function runFeature(feature: string, input: Record<string, unknown>): Prom
     intervalMs: 3000,
     capMs: 120000,
   });
-  if (done.taskStatus === "error") throw new Error(done.hint || done.error || "task_error");
+  if (done.taskStatus === "error") {
+    const error = new Error(done.hint || done.error || "task_error") as Error & { code?: string };
+    error.code = done.error;
+    throw error;
+  }
   if (done.taskStatus !== "success") throw new Error("The task took too long. Nothing was charged for a failed task.");
   return { ...done, units: created.units ?? 0 };
 }
@@ -58,6 +66,15 @@ async function blobFromUrl(url: string): Promise<Blob> {
   const res = await fetch(url);
   if (!res.ok) throw new Error("Could not read an image for upload.");
   return res.blob();
+}
+
+function loadHtmlImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Could not read the photo for a tighter crop."));
+    image.src = url;
+  });
 }
 
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -87,9 +104,9 @@ export async function runLiveSession(
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ runId, estimate }),
-  }).then((res) => res.json())) as { allow?: boolean; reason?: string };
+  }).then((res) => res.json())) as { allow?: boolean; reason?: string; hint?: string };
   if (!gate.allow) {
-    const error = new Error(gate.reason === "no_key" ? "Live mode needs a server key." : "The live unit cap is full.") as Error & { fallback?: string };
+    const error = new Error(gate.hint || capMessage(gate.reason)) as Error & { fallback?: string };
     error.fallback = "demo";
     throw error;
   }
@@ -110,9 +127,33 @@ export async function runLiveSession(
 
   try {
     onUpdate({ traceId: "crop", status: "done" });
-    const faceId = await uploadBlob(await blobFromUrl(session.faceCropUrl), "face-crop.jpg");
-    const skin = await charge("skin", () => runFeature("skin-analysis", { fileId: faceId }));
-    const tone = await charge("tone", () => runFeature("skin-tone-analysis", { fileId: faceId }));
+    let faceId = await uploadBlob(await blobFromUrl(session.faceCropUrl), "face-crop.jpg");
+    let tightened = false;
+    const tightenFace = async () => {
+      if (tightened || !session.selfieUrl || !session.faceBox) return false;
+      tightened = true;
+      const image = await loadHtmlImage(session.selfieUrl);
+      const rect = cropAroundFace(
+        { width: image.naturalWidth, height: image.naturalHeight },
+        session.faceBox,
+        { faceWidthRatio: TIGHTER_FACE_WIDTH_RATIO },
+      );
+      const url = cropToCanvas(image, rect);
+      faceId = await uploadBlob(dataUrlToBlob(url), "face-crop-tight.jpg");
+      return true;
+    };
+    const runFace = async (traceId: string, feature: string, extra: Record<string, unknown> = {}) => {
+      try {
+        return await charge(traceId, () => runFeature(feature, { ...extra, fileId: faceId }));
+      } catch (error) {
+        const code = (error as { code?: string }).code ?? (error instanceof Error ? error.message : "");
+        if (!isFaceSizeError(code) || !(await tightenFace())) throw error;
+        onUpdate({ traceId, status: "running", detail: "Retrying with a tighter face crop." });
+        return charge(traceId, () => runFeature(feature, { ...extra, fileId: faceId }));
+      }
+    };
+    const skin = await runFace("skin", "skin-analysis");
+    const tone = await runFace("tone", "skin-tone-analysis");
     const planInput = {
       role: session.role,
       presentation: session.presentation,
@@ -173,7 +214,7 @@ export async function runLiveSession(
       }
     }
     onUpdate({ traceId: "critique", status: "done" });
-    const simulation = await charge("sim", () => runFeature("skin-simulation", { fileId: faceId, simulation: plan.simulation.intensities }));
+    const simulation = await runFace("sim", "skin-simulation", { simulation: plan.simulation.intensities });
     await fetch("/api/run/finish", {
       method: "POST",
       headers: { "content-type": "application/json" },

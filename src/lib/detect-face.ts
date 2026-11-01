@@ -1,4 +1,4 @@
-import { cropAroundFace, type Rect } from "@/lib/crop";
+import { cropAroundFace, syntheticFace, type Rect } from "@/lib/crop";
 
 type VisionModule = {
   FaceDetector: {
@@ -103,5 +103,5 @@ export function resizeFull(image: HTMLImageElement, maxSide = 1600): string {
 }
 
 export function fallbackCrop(width: number, height: number): Rect {
-  return cropAroundFace({ width, height }, { x: width * 0.22, y: height * 0.08, width: width * 0.56, height: height * 0.5 });
+  return cropAroundFace({ width, height }, syntheticFace(width, height));
 }

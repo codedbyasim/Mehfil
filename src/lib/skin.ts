@@ -98,11 +98,16 @@ export function normalizeSkin(input: unknown): NormalizedSkin {
       });
     }
   }
-  const typeNode = asRecord(friendly.skin_type);
+  if (skin.overall === null) skin.overall = num(root.overall);
+  if (skin.skinAge === null) skin.skinAge = num(root.skinAge);
+  const typeNode = asRecord(friendly.skin_type) ?? asRecord(root.skinType);
   if (typeNode) {
-    if (!skin.skinType.whole && typeof typeNode.whole === "string") skin.skinType.whole = typeNode.whole;
-    if (!skin.skinType.tZone && typeof typeNode.t_zone === "string") skin.skinType.tZone = typeNode.t_zone;
-    if (!skin.skinType.uZone && typeof typeNode.u_zone === "string") skin.skinType.uZone = typeNode.u_zone;
+    const whole = typeNode.whole;
+    const tZone = typeNode.tZone ?? typeNode.t_zone;
+    const uZone = typeNode.uZone ?? typeNode.u_zone;
+    if (!skin.skinType.whole && typeof whole === "string") skin.skinType.whole = whole;
+    if (!skin.skinType.tZone && typeof tZone === "string") skin.skinType.tZone = tZone;
+    if (!skin.skinType.uZone && typeof uZone === "string") skin.skinType.uZone = uZone;
   }
   return skin;
 }
@@ -117,16 +122,29 @@ function findColor(value: unknown): Record<string, unknown> {
   return {};
 }
 
+function toneHex(snake: unknown, camel: unknown): string | null {
+  if (typeof snake === "string") return normalizeHex(snake);
+  if (typeof camel === "string") return normalizeHex(camel);
+  return null;
+}
+
+function toneName(snake: unknown, camel: unknown): string | null {
+  if (typeof snake === "string" && snake.trim()) return snake;
+  if (typeof camel === "string" && camel.trim()) return camel;
+  return null;
+}
+
 export function normalizeTones(input: unknown): NormalizedTones {
   const color = findColor(input);
+  const root = asRecord(input) ?? {};
   return {
-    skinColor: normalizeHex(typeof color.skin_color === "string" ? color.skin_color : null),
-    eyeColor: normalizeHex(typeof color.eye_color === "string" ? color.eye_color : null),
-    eyeColorName: typeof color.eye_color_name === "string" ? color.eye_color_name : null,
-    lipColor: normalizeHex(typeof color.lip_color === "string" ? color.lip_color : null),
-    eyebrowColor: normalizeHex(typeof color.eyebrow_color === "string" ? color.eyebrow_color : null),
-    hairColor: normalizeHex(typeof color.hair_color === "string" ? color.hair_color : null),
-    hairColorName: typeof color.hair_color_name === "string" ? color.hair_color_name : null,
+    skinColor: toneHex(color.skin_color, root.skinColor),
+    eyeColor: toneHex(color.eye_color, root.eyeColor),
+    eyeColorName: toneName(color.eye_color_name, root.eyeColorName),
+    lipColor: toneHex(color.lip_color, root.lipColor),
+    eyebrowColor: toneHex(color.eyebrow_color, root.eyebrowColor),
+    hairColor: toneHex(color.hair_color, root.hairColor),
+    hairColorName: toneName(color.hair_color_name, root.hairColorName),
   };
 }
 

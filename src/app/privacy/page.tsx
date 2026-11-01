@@ -7,7 +7,7 @@ export default function PrivacyPage() {
         A photo you upload is sent to the server only so it can be passed to YouCam for that request. The server does not write it to a database. The browser keeps the session, including result images, in IndexedDB on your device until you clear the site data.
       </p>
       <p>
-        The groom demo is different: it is a consented portrait of Muhammad Asim, shipped as static files so judges can see a real run without spending units. Bride and guest scenes are drawings, labeled placeholder.
+        The groom demo is a consented portrait of Muhammad Asim, shipped as static files so judges can see a real run without spending units. The bride demo is a real YouCam run on an AI-generated fictional model, not a real person. The guest portrait is still a labeled drawing. The outfit photos are product shots with no logos.
       </p>
       <p>
         MEHFIL does not guess ethnicity, health, or any sensitive trait from a photo. Skin age is YouCam’s score, shown as a score. The hair color name from the tone analyzer is not displayed, because on the live groom run it was wrong.

@@ -164,7 +164,10 @@ export function taskSpec(
 
 export const ERROR_HINTS: Record<string, string> = {
   error_no_face: "No face was found. Use a front-facing photo.",
-  error_face_position_too_small: "The face is too small. MEHFIL crops it to about 60% of the width before skin calls.",
+  error_src_face_too_small:
+    "The face is too small for skin analysis. MEHFIL retries once with a tighter crop. A closer portrait works best.",
+  error_face_position_too_small:
+    "The face is too small in the frame. Move closer, or let MEHFIL retry with a tighter crop.",
   error_multiple_people: "Use a photo with one person.",
   error_multi_person: "Use a photo with one person.",
   error_large_face_angle: "Look straight at the camera.",

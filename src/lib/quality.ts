@@ -96,8 +96,8 @@ export function reportFromImage(input: {
       label: "One face",
       status: "pass",
       detail:
-        ratio >= 0.55
-          ? "A crop can put the face near sixty percent of the width for skin calls."
+        ratio >= 0.68
+          ? "A crop keeps the face near seventy-two percent of the width. Skin calls retry once tighter if needed."
           : "The face is small. A full-length photo can still try on clothes. Skin calls will use a tighter crop.",
     });
   }

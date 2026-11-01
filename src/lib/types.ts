@@ -148,12 +148,15 @@ export type Session = {
   scenarioId?: string;
   placeholder: boolean;
   subject?: string;
+  subjectNote?: string;
   role: Role;
   presentation: Presentation;
   consent: boolean;
   framing: PhotoFraming;
   selfieUrl?: string;
   faceCropUrl?: string;
+  /** Face box in the coordinate space of the resized selfie, so a live retry can crop tighter. */
+  faceBox?: { x: number; y: number; width: number; height: number };
   simulationImage?: string;
   groomingImage?: string;
   masks?: Record<string, string>;

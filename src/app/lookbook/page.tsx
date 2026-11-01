@@ -2,6 +2,7 @@
 
 import { EmptyWeek } from "@/components/shell";
 import { useSession } from "@/components/session";
+import { frameLabel } from "@/lib/demo";
 import { useState } from "react";
 
 export default function LookbookPage() {
@@ -79,7 +80,7 @@ export default function LookbookPage() {
         </div>
       </header>
       {message ? <p className="no-print text-sm text-muted">{message}</p> : null}
-      {session.placeholder ? <p className="text-sm text-gold">Placeholder illustrations. Swap them for a live run when you have consent.</p> : null}
+      <p className={`text-sm ${session.placeholder ? "text-gold" : "text-muted"}`}>{frameLabel(session)}</p>
       <div className="grid gap-4 md:grid-cols-3">
         {session.events.map((event) => {
           const look = session.plan!.looks.find((item) => item.eventId === event.id);
