@@ -14,6 +14,7 @@ export default function StudioPage() {
   const [liveError, setLiveError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [statuses, setStatuses] = useState<Record<string, string>>({});
+  const [liveCharged, setLiveCharged] = useState(0);
 
   const plan = session?.plan;
 
@@ -39,6 +40,7 @@ export default function StudioPage() {
 
   const visible = useMemo(() => (plan?.trace ?? []).slice(0, shown), [plan, shown]);
   const spent = visible.reduce((sum, step) => sum + (session?.mode === "demo" ? 0 : step.units), 0);
+  const counter = liveCharged > 0 ? liveCharged : session?.mode === "demo" ? 0 : Math.max(spent, session?.unitsCharged ?? 0);
 
   if (!session) return <EmptyWeek title="The stylist" />;
 
@@ -55,7 +57,9 @@ export default function StudioPage() {
     setLiveError(null);
     setRunning(true);
     try {
+      setLiveCharged(0);
       const result = await runLiveSession(session!, (update) => {
+        if (update.units && update.units > 0) setLiveCharged((total) => total + update.units!);
         setStatuses((current) => ({ ...current, [update.traceId]: update.status }));
       });
       setSession(result.session);
@@ -111,7 +115,7 @@ export default function StudioPage() {
       </section>
       <aside className="h-fit rounded-3xl border border-gold/30 bg-maroon-deep p-6 text-ivory">
         <p className="text-xs uppercase tracking-[0.2em] text-gold-bright">Unit counter</p>
-        <p className="display mt-3 text-6xl">{session.mode === "demo" ? 0 : spent}</p>
+        <p className="display mt-3 text-6xl">{counter}</p>
         <p className="mt-2 text-sm text-ivory/75">
           {session.mode === "demo"
             ? `Demo charges nothing. A live week of this plan is ${plan?.unitsIfLive ?? "—"} units.`

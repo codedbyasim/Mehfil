@@ -20,6 +20,7 @@ export async function GET(request: Request, context: Params) {
     const data = (payload.data as { error?: string; failure_reason?: string; results?: unknown } | undefined) ?? {};
     if (taskStatus === "error") {
       const code = String(data.error ?? data.failure_reason ?? "task_error");
+      console.warn("[mehfil] task error", feature, code);
       const next = await settleTask(grant, taskId, "error");
       return withCookies(
         json({ taskStatus, error: code, hint: ERROR_HINTS[code] ?? "The task failed. YouCam does not charge failed tasks." }),

@@ -168,6 +168,13 @@ export const ERROR_HINTS: Record<string, string> = {
     "The face is too small for skin analysis. MEHFIL retries once with a tighter crop. A closer portrait works best.",
   error_face_position_too_small:
     "The face is too small in the frame. Move closer, or let MEHFIL retry with a tighter crop.",
+  error_src_face_out_of_bound:
+    "The crop cut off the forehead or the ears. MEHFIL retries with a looser crop so the whole face stays in frame.",
+  invalid_params: "That request wasn't accepted. Start the look again.",
+  below_min_image_size: "That image is too small. Use a larger photo.",
+  error_below_min_image_size: "That image is too small. Use a larger photo.",
+  exceed_max_image_size: "That image is too large. Use a smaller photo.",
+  error_exceed_max_image_size: "That image is too large. Use a smaller photo.",
   error_multiple_people: "Use a photo with one person.",
   error_multi_person: "Use a photo with one person.",
   error_large_face_angle: "Look straight at the camera.",

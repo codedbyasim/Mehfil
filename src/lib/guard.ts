@@ -15,11 +15,13 @@ export type Ledger = {
   reserved: number;
   reservations: Record<string, Reservation>;
   runsByIp: Record<string, string[]>;
+  /** Runs that finished without a delivered look. Capped separately from LIVE_RUNS_PER_IP. */
+  failedByIp?: Record<string, string[]>;
 };
 
 export type GuardDecision = {
   allow: boolean;
-  reason?: "ip" | "daily" | "session" | "ok";
+  reason?: "ip" | "daily" | "session" | "failed" | "ok";
   ledger: Ledger;
   runId: string;
 };
@@ -29,7 +31,7 @@ export function utcDay(now = new Date()): string {
 }
 
 export function emptyLedger(day = utcDay()): Ledger {
-  return { day, spent: 0, reserved: 0, reservations: {}, runsByIp: {} };
+  return { day, spent: 0, reserved: 0, reservations: {}, runsByIp: {}, failedByIp: {} };
 }
 
 export function expireReservations(ledger: Ledger, now: number, ttlMs: number): Ledger {
@@ -54,12 +56,17 @@ export function rollDay(ledger: Ledger, day: string): Ledger {
 
 export function beginRun(
   ledger: Ledger,
-  request: { runId: string; ip: string; estimate: number; now?: number; knownRunIds?: string[] },
+  request: { runId: string; ip: string; estimate: number; now?: number; knownRunIds?: string[]; failedCap?: number },
   limits: Limits,
 ): GuardDecision {
   const now = request.now ?? Date.now();
   const rolled = expireReservations(rollDay(ledger, utcDay(new Date(now))), now, limits.reservationTtlMs);
   const remembered = (request.knownRunIds ?? []).filter((id) => id.length > 0);
+  const failed = rolled.failedByIp?.[request.ip] ?? [];
+  const failedCap = request.failedCap ?? limits.failedPerIp ?? 3;
+  if (!failed.includes(request.runId) && failed.length >= failedCap) {
+    return { allow: false, reason: "failed", ledger: rolled, runId: request.runId };
+  }
   const runs = [...new Set([...(rolled.runsByIp[request.ip] ?? []), ...remembered])];
   const already = runs.includes(request.runId) || Boolean(rolled.reservations[request.runId]);
   if (!already && runs.length >= limits.perIp) {
@@ -97,20 +104,45 @@ export function beginRun(
   };
 }
 
-export function finishRun(ledger: Ledger, runId: string, used: number, now = Date.now()): Ledger {
+function withoutDeliveredRun(ledger: Ledger, visitor: string, runId: string): Ledger {
+  const runs = (ledger.runsByIp[visitor] ?? []).filter((id) => id !== runId);
+  const failed = new Set(ledger.failedByIp?.[visitor] ?? []);
+  failed.add(runId);
+  return {
+    ...ledger,
+    runsByIp: { ...ledger.runsByIp, [visitor]: runs },
+    failedByIp: { ...(ledger.failedByIp ?? {}), [visitor]: [...failed] },
+  };
+}
+
+/**
+ * Settle a reservation. A run counts toward the visitor cap only when it delivered a look.
+ * A failed finish still adds the charged units to the daily spent, then frees the slot.
+ */
+export function finishRun(
+  ledger: Ledger,
+  runId: string,
+  used: number,
+  now = Date.now(),
+  options?: { delivered?: boolean; visitor?: string },
+): Ledger {
   const current = expireReservations(ledger, now, 30 * 60 * 1000);
   const reservation = current.reservations[runId];
+  const visitor = reservation?.ip ?? options?.visitor;
+  const spent = current.spent + Math.max(0, used);
   if (!reservation) {
-    return { ...current, spent: current.spent + Math.max(0, used) };
+    const next = { ...current, spent };
+    return options?.delivered === false && visitor ? withoutDeliveredRun(next, visitor, runId) : next;
   }
   const rest = { ...current.reservations };
   delete rest[runId];
-  return {
+  const settled: Ledger = {
     ...current,
-    spent: current.spent + Math.max(0, used),
+    spent,
     reserved: Math.max(0, current.reserved - reservation.units),
     reservations: rest,
   };
+  return options?.delivered === false && visitor ? withoutDeliveredRun(settled, visitor, runId) : settled;
 }
 
 export function releaseRun(ledger: Ledger, runId: string, now = Date.now()): Ledger {
