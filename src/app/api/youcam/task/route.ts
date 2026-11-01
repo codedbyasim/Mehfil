@@ -16,12 +16,7 @@ export async function POST(request: Request) {
     if ("error" in gate) return json({ error: gate.error, hint: gate.hint }, gate.status);
     const taskId = await createTask(spec.path, spec.body);
     const next = await rememberTask(gate.grant, taskId, spec.units);
-    if (typeof next === "string") {
-      return json(
-        { error: next, hint: next === "reservation_spent" ? "This live run has used the units it reserved." : runRequired().hint },
-        next === "reservation_spent" ? 409 : 401,
-      );
-    }
+    if (typeof next === "string") return json(runRequired(), 401);
     return withCookies(json({ taskId, feature: spec.feature, units: spec.units }), [runCookie(request, next)]);
   } catch (error) {
     const code = error instanceof YouCamError ? error.code : error instanceof Error ? error.message : "task_failed";

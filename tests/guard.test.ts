@@ -12,74 +12,60 @@ describe("unit guard", () => {
     expect(skinAnalysisCost(7, "hd")).toBe(16);
     expect(skinSimulationCost(4)).toBe(4);
     expect(skinSimulationCost(5)).toBe(6);
-    expect(limitsFromEnv({}).daily).toBe(150);
-    expect(limitsFromEnv({ DAILY_UNIT_CAP: "90" }).daily).toBe(90);
+    expect(limitsFromEnv({}).daily).toBe(Number.POSITIVE_INFINITY);
+    expect(limitsFromEnv({ DAILY_UNIT_CAP: "1", LIVE_RUNS_PER_IP: "1" }).daily).toBe(Number.POSITIVE_INFINITY);
+    expect(limitsFromEnv({ DAILY_UNIT_CAP: "1", LIVE_RUNS_PER_IP: "1" }).perIp).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("allows two runs per IP and then falls closed", () => {
+  it("allows repeated runs for the same visitor", () => {
     let ledger = emptyLedger("2026-10-28");
-    const first = beginRun(ledger, { runId: "a", ip: "ip1", estimate: 46, now }, limits);
-    expect(first.allow).toBe(true);
-    ledger = first.ledger;
-    const second = beginRun(ledger, { runId: "b", ip: "ip1", estimate: 46, now: now + 10 }, limits);
-    expect(second.allow).toBe(true);
-    const third = beginRun(second.ledger, { runId: "c", ip: "ip1", estimate: 46, now: now + 20 }, limits);
-    expect(third.allow).toBe(false);
-    expect(third.reason).toBe("ip");
-    const other = beginRun(second.ledger, { runId: "d", ip: "ip2", estimate: 46, now: now + 20 }, limits);
-    expect(other.allow).toBe(true);
+    for (const runId of ["a", "b", "c", "d"]) {
+      const next = beginRun(ledger, { runId, ip: "ip1", estimate: 46, now }, limits);
+      expect(next.allow).toBe(true);
+      ledger = next.ledger;
+    }
   });
 
-  it("stops at the daily ceiling and releases unused reservations", () => {
+  it("does not stop at a daily total and still releases unused reservations", () => {
     let ledger = emptyLedger("2026-10-28");
-    ledger = { ...ledger, spent: 120 };
-    const blocked = beginRun(ledger, { runId: "a", ip: "ip1", estimate: 46, now }, limits);
-    expect(blocked.allow).toBe(false);
-    expect(blocked.reason).toBe("daily");
-    const ok = beginRun(ledger, { runId: "a", ip: "ip1", estimate: 30, now }, limits);
+    ledger = { ...ledger, spent: 10000 };
+    const ok = beginRun(ledger, { runId: "a", ip: "ip1", estimate: 46, now }, limits);
     expect(ok.allow).toBe(true);
+    expect(ok.reason).toBe("ok");
     const finished = finishRun(ok.ledger, "a", 12, now + 1000);
-    expect(finished.spent).toBe(132);
+    expect(finished.spent).toBe(10012);
     expect(finished.reserved).toBe(0);
     const released = releaseRun(ok.ledger, "a", now + 1000);
-    expect(released.spent).toBe(120);
+    expect(released.spent).toBe(10000);
     expect(released.reserved).toBe(0);
   });
 
-  it("refuses a session over the per-run budget and expires stale holds", () => {
+  it("allows a large estimate and expires stale holds", () => {
     const ledger = emptyLedger("2026-10-28");
     const huge = beginRun(ledger, { runId: "a", ip: "ip1", estimate: 80, now }, limits);
-    expect(huge.reason).toBe("session");
+    expect(huge.allow).toBe(true);
     const held = beginRun(ledger, { runId: "a", ip: "ip1", estimate: 40, now }, limits);
     const later = beginRun(held.ledger, { runId: "b", ip: "ip1", estimate: 120, now: now + limits.reservationTtlMs + 5 }, limits);
-    expect(later.allow).toBe(false);
-    expect(later.reason).toBe("session");
-    expect(later.ledger.reserved).toBe(0);
+    expect(later.allow).toBe(true);
+    expect(later.ledger.reserved).toBe(120);
   });
 
-  it("frees the visitor slot when a run delivers nothing and caps repeated failures", () => {
-    const first = beginRun(emptyLedger("2026-10-28"), { runId: "a", ip: "ip1", estimate: 40, now }, limits);
-    const failed = finishRun(first.ledger, "a", 12, now + 1000, { delivered: false });
-    expect(failed.spent).toBe(12);
-    expect(failed.reserved).toBe(0);
-    expect(failed.runsByIp.ip1 ?? []).not.toContain("a");
-    expect(failed.failedByIp?.ip1).toEqual(["a"]);
-    const retry = beginRun(failed, { runId: "b", ip: "ip1", estimate: 40, now: now + 2000 }, limits);
-    expect(retry.allow).toBe(true);
-    let ledger = retry.ledger;
-    ledger = finishRun(ledger, "b", 4, now + 3000, { delivered: false });
-    const third = beginRun(ledger, { runId: "c", ip: "ip1", estimate: 40, now: now + 4000 }, limits);
-    ledger = finishRun(third.ledger, "c", 0, now + 5000, { delivered: false });
-    const blocked = beginRun(ledger, { runId: "d", ip: "ip1", estimate: 40, now: now + 6000 }, limits);
-    expect(blocked.allow).toBe(false);
-    expect(blocked.reason).toBe("failed");
-    expect(blocked.ledger.spent).toBe(16);
+  it("does not block after failed finishes", () => {
+    let ledger = emptyLedger("2026-10-28");
+    for (const runId of ["a", "b", "c", "d"]) {
+      const started = beginRun(ledger, { runId, ip: "ip1", estimate: 40, now }, limits);
+      expect(started.allow).toBe(true);
+      ledger = finishRun(started.ledger, runId, 4, now + 1000, { delivered: false });
+    }
+    expect(ledger.spent).toBe(16);
+    const again = beginRun(ledger, { runId: "e", ip: "ip1", estimate: 40, now: now + 2000 }, limits);
+    expect(again.allow).toBe(true);
   });
 
-  it("counts signed-cookie runs toward the visitor cap", () => {
-    const third = beginRun(emptyLedger("2026-10-28"), { runId: "c", ip: "ip1", estimate: 10, knownRunIds: ["a", "b"], now }, limits);
-    expect(third.allow).toBe(false);
-    expect(third.reason).toBe("ip");
+  it("ignores a visit-cookie run list", () => {
+    const next = beginRun(emptyLedger("2026-10-28"), { runId: "c", ip: "ip1", estimate: 10, knownRunIds: ["a", "b"], now }, limits);
+    expect(next.allow).toBe(true);
+    expect(next.reason).toBe("ok");
   });
 
   it("resets the ledger on the next UTC day", () => {

@@ -160,8 +160,8 @@ export async function settleRun(runId: string, used: number) {
   return ledger;
 }
 
-export async function budgetAllows(grant: RunGrant, units: number): Promise<"ok" | "reservation_spent" | "run_required"> {
-  let reason: "ok" | "reservation_spent" | "run_required" = "ok";
+export async function budgetAllows(grant: RunGrant, units: number): Promise<"ok" | "run_required"> {
+  let reason: "ok" | "run_required" = "ok";
   await updateLedger((ledger) => {
     const staged = stageTask(ledger, {
       runId: grant.runId,
@@ -177,8 +177,8 @@ export async function budgetAllows(grant: RunGrant, units: number): Promise<"ok"
   return reason;
 }
 
-export async function trackTask(grant: RunGrant, taskId: string, units: number): Promise<RunGrant | "reservation_spent" | "run_required"> {
-  let outcome: RunGrant | "reservation_spent" | "run_required" = "run_required";
+export async function trackTask(grant: RunGrant, taskId: string, units: number): Promise<RunGrant | "run_required"> {
+  let outcome: RunGrant | "run_required" = "run_required";
   await updateLedger((ledger) => {
     const staged = stageTask(ledger, {
       runId: grant.runId,
